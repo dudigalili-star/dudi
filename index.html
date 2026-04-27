@@ -1,0 +1,2772 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="חשבונית+">
+<meta name="application-name" content="חשבונית+">
+<meta name="theme-color" content="#2d5a3d">
+<link rel="manifest" href="manifest.webmanifest" id="pwa-manifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png" id="apple-icon">
+<title>חשבונית+ | מערכת ניהול עסקי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --border: #e8e5de;
+    --text: #1a1814; --muted: #8a8680; --accent: #2d5a3d;
+    --accent-light: #e8f2eb; --accent-mid: #4a8c62;
+    --danger: #c0392b; --danger-light: #fdf2f1;
+    --warning: #d4790a; --warning-light: #fef8f0;
+    --radius: 10px;
+  }
+  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; direction: rtl; min-height: 100vh; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar { width: 210px; min-width: 210px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+  .logo { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .logo-img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: var(--bg); border: 1px solid var(--border); display: none; }
+  .logo-text { font-weight: 700; font-size: 17px; color: var(--accent); letter-spacing: -0.5px; }
+  .logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+  .nav { flex: 1; padding: 10px 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 18px; cursor: pointer; color: var(--muted); font-size: 13.5px; border-right: 3px solid transparent; transition: all 0.15s; user-select: none; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { color: var(--accent); background: var(--accent-light); border-right-color: var(--accent); font-weight: 500; }
+  .nav-icon { font-size: 16px; width: 22px; text-align: center; }
+  .sidebar-footer { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .page.active { display: flex; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-mid); }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #eee; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-icon { padding: 5px 9px; font-size: 14px; line-height: 1; }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #f5c6c3; }
+  .btn-danger:hover { background: #fbe8e7; }
+
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .stat-val { font-size: 22px; font-weight: 600; }
+  .stat-val.green { color: var(--accent); }
+  .stat-val.red { color: var(--danger); }
+
+  .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-head { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .table-head-title { font-size: 14px; font-weight: 600; }
+  .search-bar { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--bg); }
+  .search-bar input { border: none; background: transparent; outline: none; font-family: 'Heebo', sans-serif; font-size: 13px; width: 160px; color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: right; padding: 10px 16px; font-size: 12px; font-weight: 500; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--border); }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+  .badge-paid { background: var(--accent-light); color: var(--accent); }
+  .badge-unpaid { background: var(--danger-light); color: var(--danger); }
+  .badge-partial { background: var(--warning-light); color: var(--warning); }
+  .badge-credit { background: #f3e8ff; color: #6b21a8; }
+  .badge-voided { background: #f1f5f9; color: #64748b; }
+
+  .actions { display: flex; gap: 6px; align-items: center; }
+  .sum { font-weight: 500; }
+
+  .filter-bar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .filter-btn { padding: 4px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-family: 'Heebo', sans-serif; font-size: 12px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .empty { text-align: center; padding: 50px; color: var(--muted); font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--surface); border-radius: 14px; width: 800px; max-width: 98vw; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.22); direction: rtl; }
+  .modal-sm { width: 480px; }
+  .modal-lg { width: 560px; }
+  .modal-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 2; }
+  .modal-header h2 { font-size: 16px; font-weight: 600; }
+  .modal-close { cursor: pointer; font-size: 22px; color: var(--muted); line-height: 1; background: none; border: none; font-family: inherit; }
+  .modal-body { padding: 20px 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.single { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .form-group input, .form-group select, .form-group textarea { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: 'Heebo', sans-serif; font-size: 13px; outline: none; color: var(--text); background: var(--surface); transition: border-color 0.15s; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { min-height: 64px; resize: vertical; }
+  .section-title { font-size: 13px; font-weight: 600; margin: 16px 0 10px; color: var(--text); }
+
+  /* Invoice items */
+  .items-table { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .items-table th { background: var(--bg); padding: 8px 10px; font-size: 12px; font-weight: 500; color: var(--muted); text-align: right; border-bottom: 1px solid var(--border); }
+  .items-table td { padding: 6px 8px; border-top: 1px solid var(--border); }
+  .items-table input, .items-table select { border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-family: 'Heebo', sans-serif; font-size: 12.5px; width: 100%; background: var(--surface); color: var(--text); outline: none; }
+  .items-table input:focus, .items-table select:focus { border-color: var(--accent); }
+  .delete-row { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 17px; padding: 2px 6px; line-height: 1; }
+  .delete-row:hover { color: var(--danger); }
+
+  .totals-box { background: var(--bg); border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .totals-row.total-final { font-weight: 600; font-size: 15px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+  .wa-btn { background: #25D366; color: white; border: none; border-radius: 8px; padding: 8px 14px; font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: opacity 0.15s; }
+  .wa-btn:hover { opacity: 0.88; }
+  .wa-btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #1a1814; color: white; padding: 11px 22px; border-radius: 8px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* Settings page */
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 760px; }
+  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .settings-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+  /* Logo upload */
+  .logo-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
+  .logo-upload-area:hover { border-color: var(--accent); background: var(--accent-light); }
+  .logo-upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .logo-preview { width: 100px; height: 70px; object-fit: contain; border-radius: 6px; margin: 0 auto 8px; display: block; }
+  .logo-upload-icon { font-size: 28px; margin-bottom: 6px; }
+  .logo-upload-text { font-size: 12px; color: var(--muted); }
+
+  /* Customer inline toggle */
+  .cust-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .cust-toggle-btn { flex: 1; padding: 6px 10px; border-radius: 6px; border: none; font-family: 'Heebo', sans-serif; font-size: 12.5px; cursor: pointer; background: transparent; color: var(--muted); font-weight: 400; transition: all 0.15s; }
+  .cust-toggle-btn.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+  .inline-tip { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  /* Sidebar collapse */
+  .sidebar { transition: width 0.22s ease, min-width 0.22s ease; overflow: hidden; }
+  .sidebar.collapsed { width: 52px; min-width: 52px; }
+  .sidebar.collapsed .logo-text,
+  .sidebar.collapsed .nav-item span:not(.nav-icon),
+  .sidebar.collapsed .sidebar-footer { display: none; }
+  .sidebar.collapsed .logo { padding: 14px 0; justify-content: center; }
+  .sidebar.collapsed .nav-item { padding: 12px 0; justify-content: center; }
+  .sidebar.collapsed .nav-item { border-right: none; border-right: 3px solid transparent; }
+  .sidebar.collapsed .nav-icon { width: auto; font-size: 18px; }
+  .toggle-sidebar { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 1; flex-shrink: 0; }
+  .toggle-sidebar:hover { background: var(--bg); color: var(--text); }
+
+  /* Preview modal */
+  .preview-modal { width: 860px; max-width: 97vw; max-height: 94vh; }
+  .preview-frame { width: 100%; border: none; background: white; border-radius: 0 0 8px 8px; }
+
+  /* WA link box */
+  .wa-link-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
+  .wa-link-box label { font-size: 12px; font-weight: 500; color: #166534; margin-bottom: 6px; display: block; }
+  .wa-link-row { display: flex; gap: 8px; align-items: center; }
+  .wa-link-row input { flex: 1; border: 1px solid #bbf7d0; border-radius: 7px; padding: 7px 10px; font-size: 12px; background: white; color: var(--text); outline: none; font-family: 'Heebo', sans-serif; direction: ltr; }
+  .wa-copy-btn { background: #16a34a; color: white; border: none; border-radius: 7px; padding: 7px 14px; font-size: 12px; font-family: 'Heebo', sans-serif; cursor: pointer; white-space: nowrap; }
+  .wa-copy-btn:hover { background: #15803d; }
+
+  /* Alert banner */
+  .alert-banner { background: #fff7ed; border-bottom: 1px solid #fed7aa; padding: 8px 16px 8px 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+  .alert-banner.hidden { display: none; }
+  .alert-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #92400e; cursor: pointer; }
+  .alert-item:hover { text-decoration: underline; }
+  .alert-overdue { background: #fef2f2; border-bottom-color: #fca5a5; }
+  .alert-overdue .alert-item { color: #991b1b; }
+  .alert-close { margin-right:auto; background:none; border:none; cursor:pointer; font-size:18px; color:#9ca3af; line-height:1; padding:2px 6px; border-radius:4px; flex-shrink:0; }
+  .alert-close:hover { color:#374151; background:#f3f4f6; }
+
+  /* Profit in totals */
+  .totals-row.profit { color: #166534; font-weight: 500; border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 8px; }
+  .profit-input { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-family: 'Heebo',sans-serif; font-size: 12px; width: 130px; outline: none; }
+  .profit-input:focus { border-color: var(--accent); }
+
+  /* Timeline page */
+  .timeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .timeline-month { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .timeline-month-header { padding: 10px 14px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .timeline-month-name { font-size: 13px; font-weight: 600; }
+  .timeline-month-total { font-size: 13px; font-weight: 600; color: var(--accent); }
+  .timeline-inv { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .timeline-inv:last-child { border-bottom: none; }
+  .timeline-inv:hover { background: var(--bg); }
+  .timeline-inv-name { color: var(--muted); }
+  .timeline-inv-amount { font-weight: 500; color: var(--text); }
+  .timeline-empty { padding: 14px; text-align: center; color: var(--muted); font-size: 12px; }
+  .timeline-overdue { border-right: 3px solid var(--danger); }
+  .timeline-due-soon { border-right: 3px solid var(--warning); }
+
+  /* Drive sync button */
+  .drive-btn { background: #1a73e8; color: white; border: none; border-radius: 8px; padding: 7px 14px; font-family: 'Heebo',sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s; }
+  .drive-btn:hover { opacity: 0.88; }
+  .drive-btn.restore { background: #34a853; }
+
+  @media print { .app { display: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="logo">
+      <img class="logo-img" id="sidebar-logo" src="" alt="לוגו">
+      <div class="logo-text" id="sidebar-name">חשבונית+<span id="sidebar-tagline">מערכת ניהול עסקי</span></div>
+      <button class="toggle-sidebar" onclick="toggleSidebar()" title="הסתר/הצג תפריט">☰</button>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showPage('invoices')" id="nav-invoices"><span class="nav-icon">🧾</span> <span>חשבוניות</span></div>
+      <div class="nav-item" onclick="showPage('timeline')" id="nav-timeline"><span class="nav-icon">📅</span> <span>לוח גבייה</span></div>
+      <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span> <span>הצעות מחיר</span></div>
+      <div class="nav-item" onclick="showPage('customers')" id="nav-customers"><span class="nav-icon">👥</span> <span>לקוחות</span></div>
+      <div class="nav-item" onclick="showPage('items')" id="nav-items"><span class="nav-icon">📦</span> <span>פריטים</span></div>
+      <div class="nav-item" onclick="showPage('packages')" id="nav-packages"><span class="nav-icon">🚚</span> <span>מעקב חבילות</span></div>
+      <div class="nav-item" onclick="showPage('settings')" id="nav-settings"><span class="nav-icon">⚙️</span> <span>הגדרות</span></div>
+    </nav>
+    <div class="sidebar-footer">נתונים נשמרים בדפדפן</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Alert Banner -->
+  <div id="alert-banner" class="alert-banner hidden"></div>
+
+  <!-- Invoices -->
+    <div class="page active" id="page-invoices">
+      <div class="header">
+        <h1>חשבוניות</h1>
+        <button class="btn btn-primary" onclick="openNewInvoice()">＋ חשבונית חדשה</button>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-head-title">כל החשבוניות</span>
+            <div class="search-bar"><span>🔍</span><input type="text" placeholder="חיפוש לקוח / מספר..." oninput="db.searchQuery=this.value;renderInvoices()"></div>
+          </div>
+          <div class="filter-bar">
+            <button class="filter-btn active" onclick="setFilter('all',this)">הכל</button>
+            <button class="filter-btn" onclick="setFilter('unpaid',this)">לא שולם</button>
+            <button class="filter-btn" onclick="setFilter('paid',this)">שולם</button>
+            <button class="filter-btn" onclick="setFilter('partial',this)">שולם חלקית</button>
+            <button class="filter-btn" onclick="setFilter('draft',this)">טיוטות</button>
+            <button class="filter-btn" onclick="setFilter('credit',this)">זיכויים</button>
+          </div>
+          <div id="invoices-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quotes -->
+    <div class="page" id="page-quotes">
+      <div class="header">
+        <h1>הצעות מחיר</h1>
+        <button class="btn btn-primary" onclick="openNewQuote()">＋ הצעת מחיר חדשה</button>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="quotes-stats-grid"></div>
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-head-title">כל הצעות המחיר</span>
+            <div class="search-bar"><span>🔍</span><input type="text" placeholder="חיפוש לקוח / מספר..." oninput="db.quoteSearch=this.value;renderQuotes()"></div>
+          </div>
+          <div class="filter-bar" id="quotes-filter-bar">
+            <button class="filter-btn active" onclick="setQuoteFilter('all',this)">הכל</button>
+            <button class="filter-btn" onclick="setQuoteFilter('draft',this)">טיוטה</button>
+            <button class="filter-btn" onclick="setQuoteFilter('sent',this)">נשלח</button>
+            <button class="filter-btn" onclick="setQuoteFilter('approved',this)">אושר</button>
+            <button class="filter-btn" onclick="setQuoteFilter('rejected',this)">נדחה</button>
+          </div>
+          <div id="quotes-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline / Collection -->
+    <div class="page" id="page-timeline">
+      <div class="header">
+        <h1>לוח גבייה חודשי</h1>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="timeline-year" onchange="renderTimeline()" style="font-family:Heebo,sans-serif;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);">
+          </select>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="timeline-stats"></div>
+        <div class="timeline-grid" id="timeline-grid"></div>
+      </div>
+    </div>
+
+    <!-- Customers -->
+    <div class="page" id="page-customers">
+      <div class="header">
+        <h1>לקוחות</h1>
+        <button class="btn btn-primary" onclick="openCustomerModal()">＋ לקוח חדש</button>
+      </div>
+      <div class="content">
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-head-title">רשימת לקוחות</span>
+            <div class="search-bar"><span>🔍</span><input type="text" placeholder="חיפוש..." oninput="db.custSearch=this.value;renderCustomers()"></div>
+          </div>
+          <div id="customers-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="page" id="page-items">
+      <div class="header">
+        <h1>פריטים ומוצרים</h1>
+        <button class="btn btn-primary" onclick="openItemModal()">＋ פריט חדש</button>
+      </div>
+      <div class="content">
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-head-title">רשימת פריטים</span>
+            <div class="search-bar"><span>🔍</span><input type="text" placeholder="חיפוש..." oninput="db.itemSearch=this.value;renderItems()"></div>
+          </div>
+          <div id="items-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Packages -->
+    <div class="page" id="page-packages">
+      <div class="header">
+        <h1>מעקב חבילות</h1>
+        <button class="btn btn-primary" onclick="openPackageModal()">＋ הוסף חבילה</button>
+      </div>
+      <div class="content">
+        <div class="table-card">
+          <div class="table-head">
+            <span class="table-head-title">חבילות במעקב</span>
+            <div class="search-bar"><span>🔍</span><input type="text" placeholder="חיפוש..." oninput="db.pkgSearch=this.value;renderPackages()"></div>
+          </div>
+          <div id="packages-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="page" id="page-settings">
+      <div class="header"><h1>הגדרות החברה</h1>
+        <div style="display:flex;gap:8px;">
+          <button class="drive-btn" onclick="backupToDrive()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            גבה ל-Drive
+          </button>
+          <button class="drive-btn restore" onclick="restoreFromDrive()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM10 13H7l5 5 5-5h-3V9h-4v4z"/></svg>
+            שחזר מ-Drive
+          </button>
+          <button class="btn btn-primary" onclick="saveSettings()">💾 שמור הגדרות</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="settings-grid">
+
+          <!-- Logo -->
+          <div class="settings-card" style="grid-column:1/-1">
+            <h3>לוגו החברה</h3>
+            <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+              <div>
+                <div class="logo-upload-area" id="logo-drop-area" style="width:200px;">
+                  <input type="file" accept="image/*" onchange="handleLogoUpload(this)">
+                  <div id="logo-preview-wrap">
+                    <div class="logo-upload-icon">🖼️</div>
+                    <div class="logo-upload-text">לחץ או גרור לוגו<br><span style="font-size:11px">PNG / JPG / SVG עד 2MB</span></div>
+                  </div>
+                </div>
+                <button class="btn btn-danger btn-sm" style="margin-top:8px;width:200px" onclick="removeLogo()">הסר לוגו</button>
+              </div>
+              <div style="flex:1;min-width:200px;">
+                <div class="form-group" style="margin-bottom:12px;"><label>שם החברה / עסק</label><input type="text" id="set-company-name" placeholder="שם העסק שלך"></div>
+                <div class="form-group" style="margin-bottom:12px;"><label>כתובת</label><input type="text" id="set-company-address" placeholder="רחוב, עיר, מיקוד"></div>
+                <div class="form-group"><label>תיאור קצר / מוטו</label><input type="text" id="set-company-tagline" placeholder="מה אנחנו עושים..."></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div class="settings-card">
+            <h3>פרטי התקשרות</h3>
+            <div class="form-group" style="margin-bottom:12px;"><label>טלפון</label><input type="tel" id="set-phone" placeholder="050-0000000"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>אימייל</label><input type="email" id="set-email" placeholder="info@company.com"></div>
+            <div class="form-group"><label>אתר אינטרנט</label><input type="text" id="set-website" placeholder="www.company.com"></div>
+          </div>
+
+          <!-- Financial -->
+          <div class="settings-card">
+            <h3>פרטים עסקיים</h3>
+            <div class="form-group" style="margin-bottom:12px;"><label>ח.פ / ע.מ / ת.ז</label><input type="text" id="set-vat-num" placeholder="514000000"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>מספר עוסק מורשה</label><input type="text" id="set-osek" placeholder="000000000"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>פרטי בנק לתשלום</label><input type="text" id="set-bank" placeholder="בנק הפועלים, סניף 600, חשבון 123456"></div>
+            <div class="form-group"><label>הערת תשלום קבועה בחשבוניות</label><textarea id="set-payment-note" placeholder="תשלום בתוך 30 יום..."></textarea></div>
+          </div>
+
+          <!-- Invoice numbering -->
+          <div class="settings-card">
+            <h3>מספור מסמכים</h3>
+            <div class="form-group" style="margin-bottom:12px;"><label>קידומת חשבונית</label><input type="text" id="set-inv-prefix" placeholder="INV-"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>מספר חשבונית הבאה</label><input type="number" id="set-inv-next" min="1"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>קידומת הצעת מחיר</label><input type="text" id="set-quote-prefix" placeholder="QT-"></div>
+          </div>
+
+          <!-- Defaults -->
+          <div class="settings-card">
+            <h3>ברירות מחדל</h3>
+            <div class="form-group" style="margin-bottom:12px;"><label>מע"מ ברירת מחדל</label>
+              <select id="set-default-vat"><option value="18">18%</option><option value="0">0% (פטור)</option></select>
+            </div>
+            <div class="form-group"><label>ימי תשלום (מתאריך החשבונית)</label>
+              <select id="set-payment-days">
+                <option value="0">מיידי</option>
+                <option value="15">15 יום</option>
+                <option value="30" selected>30 יום</option>
+                <option value="45">45 יום</option>
+                <option value="60">60 יום</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Invoice Modal -->
+<div id="invoice-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('invoice-modal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="inv-modal-title">חשבונית חדשה</h2>
+        <button class="modal-close" onclick="closeModal('invoice-modal')">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Customer selector -->
+        <div class="section-title" style="margin-top:0">לקוח</div>
+        <div class="cust-toggle">
+          <button class="cust-toggle-btn active" id="cust-mode-saved" onclick="setCustMode('saved')">לקוח מהרשימה</button>
+          <button class="cust-toggle-btn" id="cust-mode-onetime" onclick="setCustMode('onetime')">לקוח מזדמן</button>
+        </div>
+
+        <div id="cust-saved-section">
+          <div class="form-row single" style="margin-bottom:0">
+            <div class="form-group">
+              <select id="inv-customer">
+                <option value="">-- בחר לקוח --</option>
+              </select>
+              <span class="inline-tip">לקוח לא קיים? <a href="#" onclick="event.preventDefault();setCustMode('onetime');" style="color:var(--accent)">הכנס מזדמן</a> או <a href="#" onclick="event.preventDefault();closeModal('invoice-modal');openCustomerModal();" style="color:var(--accent)">הוסף לרשימה</a></span>
+            </div>
+          </div>
+        </div>
+
+        <div id="cust-onetime-section" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label>שם לקוח *</label><input type="text" id="ot-cust-name" placeholder="ישראל ישראלי"></div>
+            <div class="form-group"><label>טלפון</label><input type="tel" id="ot-cust-phone" placeholder="050-0000000"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>אימייל</label><input type="email" id="ot-cust-email" placeholder="mail@example.com"></div>
+            <div class="form-group"><label>כתובת</label><input type="text" id="ot-cust-address" placeholder="רחוב, עיר"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>ח.פ / ע.מ</label><input type="text" id="ot-cust-vat" placeholder="514000000"></div>
+            <div class="form-group" style="justify-content:flex-end;align-items:flex-end;">
+              <button class="btn btn-secondary btn-sm" onclick="saveOnetimeCust()" style="width:100%">💾 שמור לקוח לרשימה</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dates & status -->
+        <div class="form-row" style="margin-top:14px;">
+          <div class="form-group"><label>תאריך חשבונית</label><input type="date" id="inv-date" oninput="recalcDueDate()"></div>
+          <div class="form-group">
+            <label>תנאי תשלום</label>
+            <select id="inv-payment-terms" onchange="recalcDueDate()">
+              <option value="custom">תאריך ידני</option>
+              <option value="immediate">מיידי</option>
+              <option value="10">שוטף + 10</option>
+              <option value="30">שוטף + 30</option>
+              <option value="45">שוטף + 45</option>
+              <option value="60">שוטף + 60</option>
+              <option value="90">שוטף + 90</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>תאריך תשלום</label>
+            <input type="date" id="inv-due">
+            <span class="inline-tip" id="inv-due-hint" style="display:none"></span>
+          </div>
+          <div class="form-group"><label>סטטוס</label>
+            <select id="inv-status">
+              <option value="unpaid">לא שולם</option>
+              <option value="partial">שולם חלקית</option>
+              <option value="paid">שולם</option>
+              <option value="draft">טיוטה</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Items -->
+        <div class="section-title">פריטים</div>
+        <table class="items-table">
+          <thead><tr>
+            <th style="width:38%">תיאור</th>
+            <th style="width:11%">כמות</th>
+            <th style="width:19%">מחיר יחידה (₪)</th>
+            <th style="width:12%">מע"מ</th>
+            <th style="width:13%">סה"כ</th>
+            <th style="width:4%"></th>
+            <th style="width:3%"></th>
+          </tr></thead>
+          <tbody id="inv-items-body"></tbody>
+        </table>
+
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="addInvoiceRow()">＋ שורה ריקה</button>
+          <select id="quick-item" style="font-family:Heebo,sans-serif;font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);">
+            <option value="">הוסף מפריטים שמורים...</option>
+          </select>
+        </div>
+
+        <div class="totals-box" id="inv-totals">
+          <!-- סיכום + עלות + רווח מרונדרים כאן ע"י updateTotals() -->
+        </div>
+        <input type="hidden" id="inv-total-cost" value="">
+
+        <div class="form-row single" style="margin-top:14px;">
+          <div class="form-group"><label>הערות לחשבונית</label><textarea id="inv-notes" placeholder="פרטים נוספים..."></textarea></div>
+        </div>
+
+        <!-- Allocation number (חשבוניות ישראל) -->
+        <div id="allocation-section" style="margin-top:14px;display:none;">
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span style="font-size:18px;">⚠️</span>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:#9a3412;">חשבוניות ישראל — נדרש מספר הקצאה</div>
+                <div id="allocation-warning-text" style="font-size:12px;color:#c2410c;margin-top:2px;"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="color:#9a3412;">מספר הקצאה מרשות המסים (9 ספרות)</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="inv-allocation-num" placeholder="000000000" maxlength="9" style="width:160px;letter-spacing:2px;font-size:14px;font-weight:600;" oninput="validateAllocationNum(this)">
+                <a href="https://www.gov.il/he/service/request-assignment-number-for-tax-invoice" target="_blank" style="font-size:12px;color:#ea580c;white-space:nowrap;">לבקשה באתר רשות המסים ←</a>
+              </div>
+              <span class="inline-tip" id="allocation-num-hint" style="color:#9a3412;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveInvoice()">💾 שמור</button>
+        <button class="btn btn-secondary" onclick="previewInvoice()">👁️ תצוגה מקדימה</button>
+        <button class="wa-btn" onclick="sendWA()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+          ווצאפ
+        </button>
+        <button class="btn btn-secondary" onclick="doPrint()">🖨️ PDF</button>
+        <button class="btn btn-secondary" onclick="closeModal('invoice-modal')" style="margin-right:auto">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quote Modal -->
+<div id="quote-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('quote-modal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="quote-modal-title">הצעת מחיר חדשה</h2>
+        <button class="modal-close" onclick="closeModal('quote-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-title" style="margin-top:0">לקוח</div>
+        <div class="cust-toggle">
+          <button class="cust-toggle-btn active" id="qcust-mode-saved" onclick="setQCustMode('saved')">לקוח מהרשימה</button>
+          <button class="cust-toggle-btn" id="qcust-mode-onetime" onclick="setQCustMode('onetime')">לקוח מזדמן</button>
+        </div>
+        <div id="qcust-saved-section">
+          <div class="form-row single" style="margin-bottom:0">
+            <div class="form-group">
+              <select id="qt-customer"></select>
+              <span class="inline-tip">לקוח לא קיים? <a href="#" onclick="event.preventDefault();setQCustMode('onetime');" style="color:var(--accent)">הכנס מזדמן</a></span>
+            </div>
+          </div>
+        </div>
+        <div id="qcust-onetime-section" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label>שם לקוח *</label><input type="text" id="qt-ot-name" placeholder="ישראל ישראלי"></div>
+            <div class="form-group"><label>טלפון</label><input type="tel" id="qt-ot-phone" placeholder="050-0000000"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>אימייל</label><input type="email" id="qt-ot-email" placeholder="mail@example.com"></div>
+            <div class="form-group"><label>כתובת</label><input type="text" id="qt-ot-address" placeholder="רחוב, עיר"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:14px;">
+          <div class="form-group"><label>תאריך הצעה</label><input type="date" id="qt-date"></div>
+          <div class="form-group"><label>תוקף הצעה עד</label><input type="date" id="qt-valid"></div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group"><label>סטטוס</label>
+            <select id="qt-status">
+              <option value="draft">טיוטה</option>
+              <option value="sent">נשלח</option>
+              <option value="approved">אושר</option>
+              <option value="rejected">נדחה</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-title">פריטים</div>
+        <table class="items-table">
+          <thead><tr>
+            <th style="width:34%">תיאור</th>
+            <th style="width:11%">כמות</th>
+            <th style="width:18%">מחיר יחידה (₪)</th>
+            <th style="width:12%">מע"מ</th>
+            <th style="width:13%">סה"כ</th>
+            <th style="width:5%"></th>
+            <th style="width:7%"></th>
+          </tr></thead>
+          <tbody id="qt-items-body"></tbody>
+        </table>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="addQuoteRow()">＋ שורה ריקה</button>
+          <select id="qt-quick-item" style="font-family:Heebo,sans-serif;font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);"></select>
+        </div>
+        <div class="totals-box" id="qt-totals"></div>
+        <div class="form-row single" style="margin-top:14px;">
+          <div class="form-group"><label>הערות להצעה</label><textarea id="qt-notes" placeholder="תנאים, פרטים נוספים..."></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveQuote()">💾 שמור</button>
+        <button class="btn btn-secondary" onclick="previewQuote()">👁️ תצוגה מקדימה</button>
+        <button class="wa-btn" onclick="sendQuoteWA()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+          ווצאפ
+        </button>
+        <button class="btn btn-secondary" onclick="doPrintQuote()">🖨️ PDF</button>
+        <button class="btn btn-secondary" style="margin-right:auto" onclick="closeModal('quote-modal')">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Credit Note Modal -->
+<div id="credit-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('credit-modal')">
+    <div class="modal modal-sm" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>הנפקת חשבונית זיכוי</h2>
+        <button class="modal-close" onclick="closeModal('credit-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#f3e8ff;border:1px solid #d8b4fe;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:#6b21a8;margin-bottom:6px;">חשבונית מקורית</div>
+          <div id="credit-source-info" style="font-size:13px;color:#4c1d95;"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>סוג זיכוי</label>
+          <select id="credit-type" onchange="updateCreditAmount()">
+            <option value="full">זיכוי מלא (100%)</option>
+            <option value="partial">זיכוי חלקי</option>
+            <option value="custom">פריטים לבחירה</option>
+          </select>
+        </div>
+        <div id="credit-partial-section" style="display:none;margin-bottom:14px;">
+          <div class="form-group">
+            <label>סכום לזיכוי (₪)</label>
+            <input type="number" id="credit-amount" placeholder="0.00" min="0" step="0.01" oninput="updateCreditPreview()">
+            <span class="inline-tip" id="credit-amount-hint"></span>
+          </div>
+        </div>
+        <div id="credit-custom-section" style="display:none;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:500;color:var(--muted);margin-bottom:8px;">בחר פריטים לזיכוי:</div>
+          <div id="credit-items-list"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>תאריך זיכוי</label>
+          <input type="date" id="credit-date">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>סיבת הזיכוי</label>
+          <textarea id="credit-reason" placeholder="פירוט סיבת הזיכוי..." style="min-height:60px;"></textarea>
+        </div>
+        <div style="background:#f7f6f3;border-radius:8px;padding:12px 14px;" id="credit-preview-box">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">סה"כ זיכוי:</div>
+          <div style="font-size:20px;font-weight:600;color:#6b21a8;" id="credit-total-preview">₪0.00</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" style="background:#7c3aed;" onclick="confirmCreditNote()">הנפק חשבונית זיכוי</button>
+        <button class="btn btn-secondary" onclick="closeModal('credit-modal')">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div id="customer-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('customer-modal')">
+    <div class="modal modal-sm" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="cust-modal-title">לקוח חדש</h2>
+        <button class="modal-close" onclick="closeModal('customer-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row single"><div class="form-group"><label>שם לקוח / חברה *</label><input type="text" id="cust-name" placeholder="ישראל ישראלי"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>טלפון</label><input type="tel" id="cust-phone" placeholder="050-0000000"></div>
+          <div class="form-group"><label>אימייל</label><input type="email" id="cust-email" placeholder="mail@example.com"></div>
+        </div>
+        <div class="form-row single"><div class="form-group"><label>כתובת</label><input type="text" id="cust-address" placeholder="רחוב, עיר"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>ח.פ / ע.מ</label><input type="text" id="cust-vat" placeholder="514000000"></div>
+          <div class="form-group"><label>הערות</label><input type="text" id="cust-notes"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveCustomer()">שמור לקוח</button>
+        <button class="btn btn-secondary" onclick="closeModal('customer-modal')">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Item Modal -->
+<div id="item-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('item-modal')">
+    <div class="modal modal-sm" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="item-modal-title">פריט חדש</h2>
+        <button class="modal-close" onclick="closeModal('item-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row single"><div class="form-group"><label>שם הפריט *</label><input type="text" id="item-name" placeholder="שם המוצר / שירות"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>מחיר (₪)</label><input type="number" id="item-price" placeholder="0.00" min="0" step="0.01"></div>
+          <div class="form-group"><label>מע"מ</label><select id="item-vat"><option value="18">18%</option><option value="0">0% (פטור)</option></select></div>
+        </div>
+        <div class="form-row single"><div class="form-group"><label>תיאור</label><textarea id="item-desc" placeholder="תיאור קצר של הפריט..."></textarea></div></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="saveItem()">שמור פריט</button>
+        <button class="btn btn-secondary" onclick="closeModal('item-modal')">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp Modal -->
+<!-- Package Modal -->
+<div id="package-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('package-modal')">
+    <div class="modal modal-sm" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="pkg-modal-title">הוסף חבילה</h2>
+        <button class="modal-close" onclick="closeModal('package-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>חברת שילוח</label>
+            <select id="pkg-carrier">
+              <option value="dhl">DHL</option>
+              <option value="fedex">FedEx</option>
+              <option value="ups">UPS</option>
+              <option value="israel-post">דואר ישראל</option>
+              <option value="aramex">Aramex</option>
+              <option value="tnt">TNT</option>
+              <option value="gls">GLS</option>
+              <option value="usps">USPS</option>
+              <option value="other">אחר</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>סטטוס</label>
+            <select id="pkg-status">
+              <option value="transit">בדרך</option>
+              <option value="pending">ממתין לשילוח</option>
+              <option value="customs">במכס</option>
+              <option value="delivered">נמסר</option>
+              <option value="delayed">עיכוב</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label>מספר מעקב</label>
+            <input type="text" id="pkg-tracking" placeholder="הכנס מספר מעקב..." style="direction:ltr;font-family:monospace;font-size:14px;">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>תיאור / שם החבילה</label>
+            <input type="text" id="pkg-desc" placeholder="לדוגמה: חלפים מסין">
+          </div>
+          <div class="form-group">
+            <label>תאריך משלוח משוער</label>
+            <input type="date" id="pkg-eta">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label>הערות</label>
+            <input type="text" id="pkg-notes" placeholder="הערות נוספות...">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="savePackage()">💾 שמור</button>
+        <button class="btn btn-secondary" onclick="closeModal('package-modal')">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="wa-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('wa-modal')">
+    <div class="modal modal-sm" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>שליחה בווצאפ</h2>
+        <button class="modal-close" onclick="closeModal('wa-modal')">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Step 1 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <span style="font-size:13px;font-weight:500;">העתק את ההודעה</span>
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <textarea id="wa-message" style="min-height:100px;font-size:12.5px;"></textarea>
+        </div>
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:16px;font-size:13px;" onclick="copyWAMsg()">📋 העתק הודעה ללוח</button>
+
+        <!-- Step 2 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <span style="font-size:13px;font-weight:500;">פתח את ווצאפ ושלח</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;">
+            <label>מספר טלפון (לפתיחה ישירה)</label>
+            <input type="tel" id="wa-phone" placeholder="972501234567" style="direction:ltr;">
+          </div>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin:8px 0 12px;">השאר ריק לפתיחת ווצאפ ללא מספר ספציפי, או הכנס מספר לפתיחה ישירה לשיחה</div>
+
+        <!-- Step 3 — invoice file -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <span style="font-size:13px;font-weight:500;">הורד את החשבונית ושלח כקובץ</span>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#166534;margin-bottom:10px;">הורד קובץ HTML של החשבונית ← שלח אותו בווצאפ כקובץ ← הלקוח פותח בדפדפן ורואה חשבונית מלאה</div>
+          <button class="btn btn-primary btn-sm" onclick="downloadInvForWA()" style="background:#166534;">⬇️ הורד קובץ חשבונית</button>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="wa-btn" onclick="doOpenWA()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+          פתח WhatsApp
+        </button>
+        <button class="btn btn-secondary" onclick="closeModal('wa-modal')">סגור</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="preview-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeModal('preview-modal')">
+    <div class="modal preview-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="preview-modal-title">תצוגה מקדימה</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-secondary btn-sm" onclick="doPrintFromPreview()">🖨️ הדפס / PDF</button>
+          <button class="modal-close" onclick="closeModal('preview-modal')">×</button>
+        </div>
+      </div>
+      <iframe id="preview-iframe" class="preview-frame" style="height:75vh;"></iframe>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'חשבוניתplus_v3';
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return {
+    customers: [
+      { id:1, name:'רגא לסביבה', phone:'0506669212', email:'', address:'ראשון לציון', vat:'', notes:'לקוח קבוע — תנאי שוטף +60' },
+      { id:2, name:'פורד מערכות מוניציפליות', phone:'03-6816881', email:'dudu@ford.org.il', address:'הרקמים 27, חולון', vat:'', notes:'תנאי שוטף +30' },
+      { id:3, name:'משרד הביטחון — חטיבת ים', phone:'04-8430393', email:'Mnhar_439@mod.gov.il', address:'בסיס החותרות בצ"ת, שלוחת מנה"ר בצ"ת', vat:'', notes:'ספק משרד הביטחון: 11026500' },
+    ],
+    items: [
+      { id:1, name:'קפיץ עורז מברשת קלינג ימין SC14-516001040', price:530, vat:18, desc:'מברשת עורז' },
+      { id:2, name:'קופסת נחושת לעורז הרמה SC-1014207-1', price:230, vat:18, desc:'קופסת נחושת להרמה' },
+      { id:3, name:'כיסוי קפיץ עורז מברשת 14-684300031', price:18, vat:18, desc:'כיסוי קפיץ' },
+      { id:4, name:'פין להרמת מברשת 102*20 555202', price:38, vat:18, desc:'פין הרמה' },
+      { id:5, name:'פין להורדת מברשות עורז 158*20 14-621002470', price:44, vat:18, desc:'פין הורדה' },
+      { id:6, name:'עורז מברשת שמידט', price:275, vat:18, desc:'עורז מברשת' },
+      { id:7, name:'קופסאות צלב', price:250, vat:18, desc:'קופסאות צלב' },
+      { id:8, name:'פלטה לאוזניים שמידט ימין אטאטמא', price:470, vat:18, desc:'פלטה אוזניים ימין' },
+      { id:9, name:'דיסקית עם חור', price:18, vat:18, desc:'דיסקית עם חור' },
+      { id:10, name:'קופסת אוקולון קטנה', price:29, vat:18, desc:'קופסת אוקולון קטנה' },
+      { id:11, name:'קופסת אוקולון גדולה', price:85, vat:18, desc:'קופסת אוקולון גדולה' },
+      { id:12, name:'קופסאות צלב', price:40, vat:18, desc:'קופסות צלב' },
+      { id:13, name:'צלב', price:800, vat:18, desc:'צלב' },
+      { id:14, name:'קופסת אוקולון שמאל — מברשת אטאטמא שמידט', price:530, vat:18, desc:'אוקולון שמאל' },
+      { id:15, name:'קופסת נחושת להרמה עורז SC-1014207-1', price:230, vat:18, desc:'נחושת הרמה' },
+      { id:16, name:'קופסת אוקולן מברשת עורז שמאל', price:530, vat:18, desc:'אוקולן שמאל מברשת' },
+      { id:17, name:'קופסת אוקולון שמאל — מברשת אטאטמא שמידט (קטן)', price:275, vat:18, desc:'אטאטמא שמידט קטן' },
+      { id:18, name:'קופסת אוקולון ימין — שמידט', price:470, vat:18, desc:'אוקולון ימין שמידט' },
+      { id:19, name:'דיסקית עם 2 חורים', price:18, vat:18, desc:'דיסקית 2 חורים' },
+      { id:20, name:'מלבן אוקולון שחור', price:40, vat:18, desc:'מלבן אוקולון שחור' },
+      { id:21, name:'קופסת צלב', price:250, vat:18, desc:'קופסת צלב' },
+      { id:22, name:'קופסת נחושת עם הגרדמה', price:85, vat:18, desc:'נחושת עם הגרדמה' },
+      { id:23, name:'קופסת נחושת עם חור בצד', price:145, vat:18, desc:'נחושת חור בצד' },
+      { id:24, name:'פין זרוז עם מתפמה גרוז', price:295, vat:18, desc:'פין זרוז גרוז' },
+      { id:25, name:'דיסקית אלומיניום עם חור באמצע', price:17, vat:18, desc:'דיסקית אלומיניום' },
+      { id:26, name:'קופסת אוקולון גדולה', price:34, vat:18, desc:'אוקולון גדול' },
+      { id:27, name:'קופסת אוקולון קטן ימין — אטאטמא שמידט', price:85, vat:18, desc:'אוקולון קטן ימין' },
+      { id:28, name:'מוט קצר M6 עם הגרבות', price:38, vat:18, desc:'מוט קצר M6' },
+      { id:29, name:'קפיץ אוזניים קטן', price:17, vat:18, desc:'קפיץ אוזניים קטן' },
+      { id:30, name:'קופסת אוקולון קטנה', price:29, vat:18, desc:'קופסת אוקולון' },
+      { id:31, name:'קופסאות דיסקית עם 2 חורים', price:18, vat:18, desc:'דיסקית 2 חורים' },
+      { id:32, name:'קופסת אוקולון ימין', price:85, vat:18, desc:'אוקולון ימין' },
+      // פורד
+      { id:33, name:'קופסה קטנה — אטאטמא שמידט', price:29, vat:18, desc:'קופסה קטנה פורד' },
+      { id:34, name:'קופסה גדולה — אטאטמא שמידט', price:33, vat:18, desc:'קופסה גדולה פורד' },
+      // משרד הביטחון
+      { id:35, name:'DCU0-0509D', price:850, vat:17, desc:'פריט משרד הביטחון' },
+    ],
+    invoices: [
+      // ─── חשבוניות רגא ───
+      { id:108, number:'108', customerId:1, custData:null, date:'2025-05-29', due:'2025-07-30', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קפיץ קטן — ץיפק',qty:50,price:16,vat:18},{desc:'קפיץ גדול',qty:100,price:20,vat:18}] },
+      { id:109, number:'109', customerId:1, custData:null, date:'2025-07-15', due:'2025-09-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'ציר קטן — חלק',qty:50,price:38,vat:18},{desc:'ציר גדול — חלק',qty:50,price:55,vat:18}] },
+      { id:110, number:'110', customerId:1, custData:null, date:'2025-08-19', due:'2025-10-30', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קופסת אוקולון קטנה',qty:50,price:29,vat:18}] },
+      { id:111, number:'111', customerId:1, custData:null, date:'2025-09-09', due:'2025-11-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'צלב',qty:10,price:800,vat:18}] },
+      { id:112, number:'112', customerId:1, custData:null, date:'2025-09-07', due:'2025-11-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'דיסקית',qty:18,price:50,vat:18},{desc:'מוט עם הגרבה',qty:22,price:50,vat:18}] },
+      { id:113, number:'113', customerId:1, custData:null, date:'2025-09-10', due:'2025-11-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'קופסת אוקולון קטנה',qty:30,price:29,vat:18}] },
+      { id:114, number:'114', customerId:1, custData:null, date:'2025-09-14', due:'2025-11-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'מוחתן מזגן',qty:10,price:190,vat:18}] },
+      { id:116, number:'116', customerId:1, custData:null, date:'2025-10-29', due:'2025-12-30', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קופסת נחושת עם הגרדמה',qty:20,price:85,vat:18},{desc:'קופסת נחושת ימין',qty:20,price:95,vat:18},{desc:'קופסת נחושת חור בצד',qty:10,price:145,vat:18},{desc:'פין זרוז גרוז',qty:10,price:295,vat:18}] },
+      { id:117, number:'117', customerId:1, custData:null, date:'2025-11-05', due:'2026-01-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'דיסקית אלומיניום עם חור באמצע',qty:50,price:17,vat:18},{desc:'קופסת אוקולון גדולה',qty:50,price:34,vat:18}] },
+      { id:119, number:'119', customerId:1, custData:null, date:'2025-11-11', due:'2026-01-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קפיץ אוזניים קטן',qty:50,price:17,vat:18},{desc:'מוט קצר M6 עם הגרבות',qty:30,price:38,vat:18}] },
+      { id:120, number:'120', customerId:1, custData:null, date:'2025-11-12', due:'2026-01-29', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'פלטה לאוזניים שמידט ימין',qty:4,price:470,vat:18}] },
+      { id:122, number:'122', customerId:1, custData:null, date:'2025-12-02', due:'2026-03-01', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קופסאות צלב',qty:10,price:250,vat:18},{desc:'דיסקית עם 2 חורים',qty:50,price:18,vat:18},{desc:'מלבן אוקולון שחור',qty:20,price:40,vat:18},{desc:'קופסת אוקולון קטנה',qty:50,price:29,vat:18}] },
+      { id:123, number:'123', customerId:1, custData:null, date:'2025-12-31', due:'2026-03-01', paymentTerms:'60', status:'paid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'פלטה לאוזניים שמידט ימין — אטאטמא',qty:40,price:470,vat:18},{desc:'דיסקית עם חור',qty:50,price:18,vat:18}] },
+      { id:124, number:'124', customerId:1, custData:null, date:'2026-02-04', due:'2026-04-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'אוזניים צלב',qty:10,price:800,vat:18}] },
+      { id:125, number:'125', customerId:1, custData:null, date:'2026-02-18', due:'2026-04-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'אוזניים צלב',qty:10,price:800,vat:18},{desc:'קופסת אוקולון קטנה',qty:15,price:29,vat:18},{desc:'דיסקית אלומיניום עם חור',qty:50,price:17,vat:18}] },
+      { id:127, number:'127', customerId:1, custData:null, date:'2026-03-03', due:'2026-05-30', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'עורז מברשת שמידט',qty:20,price:275,vat:18},{desc:'קופסאות צלב',qty:15,price:250,vat:18}] },
+      { id:128, number:'128', customerId:1, custData:null, date:'2026-03-03', due:'2026-05-30', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'עורז מברשת שמידט',qty:20,price:275,vat:18}] },
+      { id:129, number:'129', customerId:1, custData:null, date:'2026-04-09', due:'2026-06-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קפיץ עורז מברשת קלינג ימין SC14-516001040',qty:10,price:530,vat:18},{desc:'קופסת נחושת להרמה SC-1014207-1',qty:10,price:230,vat:18},{desc:'כיסוי קפיץ עורז מברשת 14-684300031',qty:100,price:18,vat:18}] },
+      { id:130, number:'130', customerId:1, custData:null, date:'2026-04-09', due:'2026-06-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'קפיץ עורז מברשת קלינג שמאל',qty:10,price:530,vat:18},{desc:'קופסת נחושת להרמה SC-1014207-1',qty:10,price:230,vat:18}] },
+      { id:131, number:'131', customerId:1, custData:null, date:'2026-04-15', due:'2026-06-29', paymentTerms:'60', status:'unpaid', allocationNum:'', notes:'שוטף +60',
+        items:[{desc:'פין להרמת מברשת 102×20 555202',qty:50,price:38,vat:18},{desc:'פין להורדת מברשות 158×20 14-621002470',qty:50,price:44,vat:18}] },
+      // ─── חשבוניות פורד ───
+      { id:103, number:'103', customerId:2, custData:null, date:'2023-06-05', due:'2023-07-05', paymentTerms:'30', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'Part A — קופסה קטנה',qty:150,price:23,vat:17},{desc:'Part B — קופסה גדולה',qty:100,price:30,vat:17}] },
+      { id:104, number:'104', customerId:2, custData:null, date:'2023-11-13', due:'2023-12-13', paymentTerms:'30', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'תותב לעורז מברשת',qty:50,price:32,vat:17}] },
+      { id:106, number:'106', customerId:2, custData:null, date:'2024-10-30', due:'2024-11-30', paymentTerms:'30', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'קופסה קטנה — אטאטמא שמידט',qty:150,price:29,vat:18},{desc:'קופסה גדולה — אטאטמא שמידט',qty:100,price:33,vat:18}] },
+      { id:121, number:'121', customerId:2, custData:null, date:'2025-11-12', due:'2025-12-30', paymentTerms:'30', status:'paid', allocationNum:'', notes:'שוטף +30',
+        items:[{desc:'קופסות שמידט — סוגים שונים',qty:1,price:17400,vat:18}] },
+      { id:126, number:'126', customerId:2, custData:null, date:'2026-02-18', due:'2026-02-28', paymentTerms:'immediate', status:'paid', allocationNum:'', notes:'שוטף 0',
+        items:[{desc:'קופסות שמידט',qty:1,price:6500,vat:18}] },
+      // ─── חשבוניות משרד הביטחון ───
+      { id:105, number:'105', customerId:3, custData:null, date:'2023-11-30', due:'2023-12-30', paymentTerms:'30', status:'paid', allocationNum:'', notes:'שוטף 30',
+        items:[{desc:'DCU0-0509D',qty:5,price:850,vat:17}] },
+    ],
+    nextId: 132,
+    nextQuoteId: 1,
+    quotes: [],
+    settings: {
+      companyName: 'GALILI LTD', companyAddress: 'האלמוגים 42, ראשון לציון', companyTagline: '',
+      phone: '0524470699', email: 'Dudig@rocketmail.com', website: '',
+      vatNum: '514058296', osek: '11026500', bank: '', paymentNote: '',
+      invPrefix: '', invNext: 132,
+      quotePrefix: 'QT-',
+      defaultVat: 18, paymentDays: 60,
+      logoData: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAO0AAAEsCAYAAAAvjjQqAAAACXBIWXMAAAsTAAALEwEAmpwYAAAgAElEQVR4nOxdB1gU1/Y/YkzvPZHe1Z3ZBewiMwOK2GJvsXeNCmxlARW7scQeu8LcAY1K78WWokleel5ekpeX95L3kvxTjYkCcweU+X/3zgILaqLGtgn3+863gii7M/c359xzfud3AFrWNV+9DqqaHVIhSqoBASnASxh4JINAXiUFOEkBAckAP6gQtaf6ET5NDuaQHMGJeLggyrMEhFMECa8TkLyHR/gAh3ARL8ov86L8DifizziEv+OR/JMgyqcEUf6JR/JpXsKKIClqvfESxuT75O8FEf/Ii8pXnKj8i0fKPwWE3xUQPipISg6PMOJEeQsnKSt4SUmMRPIsXpSHcEjpwaUrgRGpVQ8Y8k5r71/EwIsK8I7PxCEZOBFDZKoCvcTz0EdSoTdSW3ZVy7r11oAdKrWhL6rApdU4NrIGSApSEUPE7rPQJ/18GwEpD/ISbssjOVCQsIGXlB6cpETzkjxIQPJ4AeHneIQTeISX8whvFhBOFRDOFiRcIiB8nEf4DR7h93mEP+ER/oJH+Fse4V94hM8KDuMRruIlXNsMtDXk+46fOcMj5RSPlO94pHwrIPylgPDHgqS8zSP8Go9wBS8p+bykHCS/n0d4I4+UpbykWHmEZwpIGS2I8iBBxNG8qITzSAnhJRzIIbltzzT5wV47lTYR6ZXAIQJkpfE6pGHomaZARGod8LtV4FJbAN2ybsAacVAFj7WnoFcqAaNCNybxOgSk3fZVQs9ddW58mnI3j/DDvISfFhD2FUSlvZBe0z1SUkYKSDHyCK8WJCwJEj7CS8onvKQQ0KmChFXeCWga2DQTkOP1N6zhZxt+HtdRQ7iOfN30Z7Tf5/w7tfdQ/+8xtcbfqX1d/3P0ZxH+lUfKpzxSjvESzuARXsMhbBREZZSAlB48UnQcwn68pLQVkPIIn4rv6bZXac1LlcBL2jUj11AghjCoqgrDD9TRa9yyWtZVLeIJuGUqRKTVAEc2mYRpSNtTlGHQ1nPApymtOYRv50X5Lk6S7+m9t+ZRLq2mIy8qz/IIL+IlJV1Ayt94hE/RjU4B0ggMHjmDpwFMdb8FzJtu5AFwMfCjJl5dexggfIZDyvuax1aW8yKeFCEqPbi0mqd4hO/jkXwXLyq3C2JN60hRaRUuVlMgkwchOS70TsUwN1mLYlpWy7qsxe29ELSREoYue6qgd6ryEAkNOYTn8kjezUnyWxySz/CIhqXneITP8ZJyXkAK9XQXBW29R3P++pYHrVLX4JkvCVrt+9rnpj9PrsM5x3Wp5UR6vv6ER/IBXlSSBLGmr4Cwu373Wc37toC2ZV3OGnHQEZat+Qb49BpHskgLfccf+QdESNUsL+EpAsJbeUk+Sc6TAj0T4p/rz5ANYWOTELXphr/poLsBxkvkQVX/WZuG2fXXiEf4PI9wNY+UXwSk/MBL+H8ckt/lRFniEDYLSOYG7FLu7pFRSXMC5F5ESjUw9KU6UH8iYXSL9/1LLpLZHIxUiBJraThGQt8IEp7tO3c/L+EePMJzeIS38xImZ7YPeEn5UpBo0qeJx6wHqOPP2hnyFgDPrWYXvy71R4MGMFfyCP8fSYzxCJ/gRDmDE2U7J+KYKKn26S5pVTRDXZ/g67n7Z+BSK2/2VmpZ12v12lcJvfZVQe/9JAyTHU9wGTq99ANEirK/gORBgoTnk7MoL+GXeYQ/J96gIfxr5jlJkudmA+HPYPQ6oouC3BFi469J1lyQlCxewht4hJ8TRIXjU/FDQvo54EXywJUhQqymRkpPLcvFk0k9dpBSzDmaoSTWfUcdcKj6CV7E3QSERwsIJwkIiwLC7/AI12iZU+fNQz1C3S1/3vzzeeUm19sptP5WQMphHuH1nChP55EcJUiyX9jun9xIzZh44ghUDd3ST0NPqcULu8QK26HCyOIftFCXhFFIhl4Vh4lnfYQXlWAByTE8wot5hA8LCBMiQpPSiiNkawHoLQDeC7xxk4cprj8bvytI+EUe4XGciLtyIvbuiSrviBRrtaSWpEA/SYW+kgoxUt3N3p4tyzn0JWEveeVEGaLSZeiBZFKSuY8Tlac5UemieVSFEBTqGmqOGlAdXrTFk7qyJxbI8QUpP/EIp3NIHsqhal9CZhEk5Y6u0mlaAYgQMYSnKhAhKi3guRkrJUUF5lAV9N6j1fUixBoK3Mj06laei9RWEQgbOFIvFWnY2/zGE+C2eNM/DYgV8tBtTGwRLyzibwSkiIKkDO4j1ZHkolu4KEPnHee0ZFaaAvHvz25hZt1U0CIF+hw4cz+H5DG8iMvoU1fCCq2ZtoD2r+B51Sag1ZhgNYJESnLyV5wkb4sQcSfoo7aA9kafV4lNLPoJItMU6JGOYfrSM268iKM4hDfzSCa83K8FhHHzjKQjE9niXf8aAK6jfybfayS2ENrlF7yE83mEZwt7a9oKqIqW+qIPqtA3R6WvLesarZiNKnjgzyB6y3nKVyVnVj5NeYIXlUnkDMMj/IGDOM9AcKC11L8IoaHFlItfA/KgpkehxiQWL9HIizRJHOZFeZUgyT06rf/W0eQhQzg6DRFSVQt2/0jJpte+U/T8QS5oxMEqQjD34pEyjkfKLh5hQlhvfjNaPGoLkNXfqwk7HvCk86lcQHiRgHAfTqq6R0CEESeDkF4JQnp1C3iv5Lyqy66GqDSFFs57bq9tJYhykCDioQLCGwWEv6k/v2g3oMWjtgBVudIQ2hm8xCu/zkuynUcyJ0jyo1xqLd170eKv0JsYOtMC4It6VpE0UsvApVVDeLoMffcobgKqeZxHCiGVv9SEdF+fbGjxKi2Aua/yGjTbPw6K6j95JC/gkRwmSPLDnZFKe4JJ44jl47eh++6Wc68GViRDT6TVWEk6vptY5TZ0K24TJeLOtBGbZIHpRW4gQLSAteVhpV6ra9DQd1yfwNIcwneCJK+MEis9BITv7LxDhah9hCZZA0J6S533AtBGpFXreVHOEBD+ueEs0uzc2rJpWzyscA2vgWOPNYJW88TnBFH+TkB4Zc/Uc0/2zz4N4anngP8rgzZ0Rx302X+WMlVI50aEKLflRLzTIaWCGy9eC1BbHlI35iHFX+hxVYdEz0e8pDwn7MP3Ux47SVZJGP5SixdrICK1FiIlGbrvwffySJ7NI/lNXpMxcTz9Ljx3tFjLNbghewA1pUo68imkWSFPEPEQfoNKQTshS4Xb133755XJ6XpQhZAcFYKLVari1327ehuPlGgeUe/6eVMqWksI3PKAuvkPKF9T33DKNtOS4vs8kpcJkhLaPbWKliSjxVpa7fhTLU6sgZ5iLXBpCkSlVpOMXAAvYiJ09qbTBXFqhbv5N6zFWq6B0Cx0bmBZEdadhLMFhEf1Sq15uGc6kZVVoFteJSUDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj/j3FR+sZCw4UHgzDhrAbfSHLyO+0HvwXFeVPpG7lLuegados6RNTYWwuOVDufQiYUN3KtqlAJ8uQ8/U2jsjJKUTLym7BdJk3ihH0gLUKwKJ1pnUtKXQWSTOabNdoMJ40XNcy0NKurKw2XHm/V5AOJFHWM/vOXdbz13VELGL5Gdc9LxLuJz7VJX2tt77nEqU9h7lRGUYoZHV11s1mlnLpqnfEE1lS5v2kDoDsCEq0WqLRJfpvGb4nEAE5hxGxea05v5zTj',
+    }
+  };
+}
+
+let db = loadData();
+db.searchQuery=''; db.custSearch=''; db.itemSearch=''; db.quoteSearch='';
+db.editInvId=null; db.editCustId=null; db.editItemId=null; db.editQuoteId=null;
+db.activeFilter='all'; db.activeQuoteFilter='all'; db.custMode='saved'; db.qCustMode='saved'; db.currentWaInvId=null;
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      customers:db.customers, items:db.items, invoices:db.invoices,
+      quotes:db.quotes||[], nextId:db.nextId, nextQuoteId:db.nextQuoteId||1,
+      settings:db.settings, packages:db.packages||[]
+    }));
+  } catch(e) {}
+}
+
+// ─── Helpers ───
+function fmt(n){return Number(n).toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function today(){return new Date().toISOString().split('T')[0];}
+function addDays(d,n){const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
+function getCustomer(id){return db.customers.find(c=>c.id==id);}
+function calcInv(items){let s=0,t=0;(items||[]).forEach(it=>{const l=(it.qty||1)*(it.price||0);s+=l;t+=l*((it.vat||0)/100);});return{sub:s,tax:t,total:s+t};}
+function statusLabel(s){return{paid:'שולם',unpaid:'לא שולם',partial:'שולם חלקית',draft:'טיוטה',credit:'זיכוי',voided:'מבוטל'}[s]||s;}
+function statusClass(s){return{paid:'badge-paid',unpaid:'badge-unpaid',partial:'badge-partial',draft:'badge-draft',credit:'badge-credit',voided:'badge-voided'}[s]||'badge-draft';}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+function closeModal(id){document.getElementById(id).style.display='none';}
+const waIcon=`<svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>`;
+
+// ─── Allocation number (חשבוניות ישראל) ───
+// לוח תקרות לפי חוק:
+// 1.1.2026 – 31.5.2026 → 10,000 ₪
+// 1.6.2026 ואילך      → 5,000 ₪
+function getAllocationThreshold(){
+  const now=new Date();
+  const june2026=new Date('2026-06-01');
+  return now>=june2026?5000:10000;
+}
+
+function needsAllocation(totalBeforeVat){
+  return totalBeforeVat>=getAllocationThreshold();
+}
+
+function checkAllocationWarning(){
+  const items=getInvItems();
+  const{sub}=calcInv(items);
+  const threshold=getAllocationThreshold();
+  const section=document.getElementById('allocation-section');
+  const warnText=document.getElementById('allocation-warning-text');
+  if(needsAllocation(sub)){
+    section.style.display='block';
+    warnText.textContent=`סכום החשבונית (₪${fmt(sub)} לפני מע"מ) עולה על הסף של ₪${fmt(threshold)} — חובה להזין מספר הקצאה מרשות המסים.`;
+  } else {
+    section.style.display='none';
+  }
+}
+
+function validateAllocationNum(input){
+  const val=input.value.replace(/\D/g,'');
+  input.value=val;
+  const hint=document.getElementById('allocation-num-hint');
+  if(val.length===0) hint.textContent='';
+  else if(val.length<9) hint.textContent=`${val.length}/9 ספרות`;
+  else hint.textContent='✓ מספר הקצאה תקין';
+}
+
+// ─── Sidebar ───
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ─── Payment terms ───
+function recalcDueDate(){
+  const terms=document.getElementById('inv-payment-terms').value;
+  const dateVal=document.getElementById('inv-date').value;
+  const dueEl=document.getElementById('inv-due');
+  const hintEl=document.getElementById('inv-due-hint');
+  if(terms==='custom'||!dateVal){
+    dueEl.readOnly=false;
+    hintEl.style.display='none';
+    return;
+  }
+  dueEl.readOnly=true;
+  let due='', hint='';
+  const base=new Date(dateVal);
+  if(terms==='immediate'){
+    due=dateVal; hint='תשלום מיידי';
+  } else {
+    const days=parseInt(terms);
+    // שוטף + N = סוף החודש הנוכחי + N ימים
+    const endOfMonth=new Date(base.getFullYear(), base.getMonth()+1, 0);
+    const result=new Date(endOfMonth);
+    result.setDate(result.getDate()+days);
+    due=result.toISOString().split('T')[0];
+    hint=`שוטף + ${days}: סוף חודש ${endOfMonth.toLocaleDateString('he-IL',{month:'long',year:'numeric'})} + ${days} ימים`;
+  }
+  dueEl.value=due;
+  hintEl.textContent=hint;
+  hintEl.style.display='block';
+}
+
+// ─── Navigation ───
+function showPage(p){
+  ['invoices','timeline','quotes','customers','items','packages','settings'].forEach(pg=>{
+    document.getElementById('page-'+pg).classList.toggle('active',pg===p);
+    document.getElementById('nav-'+pg).classList.toggle('active',pg===p);
+  });
+  if(p==='invoices') renderInvoices();
+  if(p==='timeline') renderTimeline();
+  if(p==='quotes') renderQuotes();
+  if(p==='customers') renderCustomers();
+  if(p==='items') renderItems();
+  if(p==='packages') renderPackages();
+  if(p==='settings') loadSettingsForm();
+}
+
+// ─── Settings ───
+function loadSettingsForm(){
+  const s=db.settings;
+  document.getElementById('set-company-name').value=s.companyName||'';
+  document.getElementById('set-company-address').value=s.companyAddress||'';
+  document.getElementById('set-company-tagline').value=s.companyTagline||'';
+  document.getElementById('set-phone').value=s.phone||'';
+  document.getElementById('set-email').value=s.email||'';
+  document.getElementById('set-website').value=s.website||'';
+  document.getElementById('set-vat-num').value=s.vatNum||'';
+  document.getElementById('set-osek').value=s.osek||'';
+  document.getElementById('set-bank').value=s.bank||'';
+  document.getElementById('set-payment-note').value=s.paymentNote||'';
+  document.getElementById('set-inv-prefix').value=s.invPrefix||'INV-';
+  document.getElementById('set-inv-next').value=s.invNext||db.nextId;
+  document.getElementById('set-quote-prefix').value=s.quotePrefix||'QT-';
+  document.getElementById('set-default-vat').value=s.defaultVat!=null?s.defaultVat:18;
+  document.getElementById('set-payment-days').value=s.paymentDays||30;
+  if(s.logoData) showLogoPreview(s.logoData);
+}
+
+function saveSettings(){
+  const s=db.settings;
+  s.companyName=document.getElementById('set-company-name').value;
+  s.companyAddress=document.getElementById('set-company-address').value;
+  s.companyTagline=document.getElementById('set-company-tagline').value;
+  s.phone=document.getElementById('set-phone').value;
+  s.email=document.getElementById('set-email').value;
+  s.website=document.getElementById('set-website').value;
+  s.vatNum=document.getElementById('set-vat-num').value;
+  s.osek=document.getElementById('set-osek').value;
+  s.bank=document.getElementById('set-bank').value;
+  s.paymentNote=document.getElementById('set-payment-note').value;
+  s.invPrefix=document.getElementById('set-inv-prefix').value||'INV-';
+  s.invNext=parseInt(document.getElementById('set-inv-next').value)||db.nextId;
+  s.quotePrefix=document.getElementById('set-quote-prefix').value||'QT-';
+  s.defaultVat=parseInt(document.getElementById('set-default-vat').value)||18;
+  s.paymentDays=parseInt(document.getElementById('set-payment-days').value)||30;
+  db.nextId=s.invNext;
+  save();
+  updateSidebar();
+  toast('✅ ההגדרות נשמרו');
+}
+
+function updateSidebar(){
+  const s=db.settings;
+  const nameEl=document.getElementById('sidebar-name');
+  const tagEl=document.getElementById('sidebar-tagline');
+  const logoEl=document.getElementById('sidebar-logo');
+  if(s.companyName){nameEl.childNodes[0].textContent=s.companyName;}
+  if(s.companyTagline){tagEl.textContent=s.companyTagline;}
+  if(s.logoData){logoEl.src=s.logoData;logoEl.style.display='block';}
+  else{logoEl.style.display='none';}
+}
+
+function handleLogoUpload(input){
+  const file=input.files[0]; if(!file) return;
+  if(file.size>2*1024*1024){toast('הקובץ גדול מדי (מקסימום 2MB)');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    db.settings.logoData=e.target.result;
+    showLogoPreview(e.target.result);
+    save(); updateSidebar();
+    toast('הלוגו הועלה');
+  };
+  reader.readAsDataURL(file);
+}
+
+function showLogoPreview(src){
+  const wrap=document.getElementById('logo-preview-wrap');
+  wrap.innerHTML=`<img src="${src}" class="logo-preview" alt="לוגו">
+    <div class="logo-upload-text" style="margin-top:4px">לחץ להחלפה</div>`;
+}
+
+function removeLogo(){
+  db.settings.logoData='';
+  document.getElementById('logo-preview-wrap').innerHTML=`
+    <div class="logo-upload-icon">🖼️</div>
+    <div class="logo-upload-text">לחץ או גרור לוגו<br><span style="font-size:11px">PNG / JPG / SVG עד 2MB</span></div>`;
+  save(); updateSidebar(); toast('הלוגו הוסר');
+}
+
+// ─── Stats ───
+function renderStats(){
+  const invs=db.invoices;
+  const total=invs.reduce((a,i)=>a+calcInv(i.items).total,0);
+  const paid=invs.filter(i=>i.status==='paid').reduce((a,i)=>a+calcInv(i.items).total,0);
+  const unpaid=invs.filter(i=>i.status==='unpaid').reduce((a,i)=>a+calcInv(i.items).total,0);
+
+  // חישוב לגבייה החודש — חשבוניות שתאריך פירעון שלהן הוא החודש הנוכחי ועדיין לא שולמו
+  const now=new Date();
+  const thisMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const dueThisMonth=invs.filter(i=>{
+    if(i.status==='paid'||i.status==='credit'||i.status==='voided') return false;
+    return i.due && i.due.startsWith(thisMonth);
+  }).reduce((a,i)=>a+calcInv(i.items).total,0);
+
+  // חשבוניות באיחור (תאריך פירעון עבר ועדיין לא שולמו)
+  const todayStr=today();
+  const overdue=invs.filter(i=>{
+    if(i.status==='paid'||i.status==='credit'||i.status==='voided') return false;
+    return i.due && i.due < todayStr;
+  }).reduce((a,i)=>a+calcInv(i.items).total,0);
+
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-label">סה"כ חשבוניות</div><div class="stat-val">${invs.length}</div></div>
+    <div class="stat-card"><div class="stat-label">שולם</div><div class="stat-val green">₪${fmt(paid)}</div></div>
+    <div class="stat-card"><div class="stat-label">ממתין לתשלום</div><div class="stat-val red">₪${fmt(unpaid)}</div></div>
+    <div class="stat-card" style="border-color:#fbbf24;background:#fffbeb"><div class="stat-label" style="color:#92400e">לגבייה החודש</div><div class="stat-val" style="color:#d97706">₪${fmt(dueThisMonth)}</div>${dueThisMonth===0?'<div style="font-size:11px;color:#92400e;margin-top:4px">אין גבייה השנה</div>':'<div style="font-size:11px;color:#92400e;margin-top:4px">תאריך פירעון: חודש זה</div>'}</div>
+    <div class="stat-card" style="border-color:#fca5a5;background:#fff5f5"><div class="stat-label" style="color:#991b1b">באיחור</div><div class="stat-val" style="color:#dc2626">₪${fmt(overdue)}</div>${overdue===0?'<div style="font-size:11px;color:#991b1b;margin-top:4px">הכל תקין ✓</div>':'<div style="font-size:11px;color:#991b1b;margin-top:4px">עבר מועד התשלום</div>'}</div>
+  `;
+}
+
+// ─── Invoices ───
+function setFilter(f,btn){
+  db.activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInvoices();
+}
+
+function getInvCustomerName(inv){
+  if(inv.custData) return inv.custData.name+' <span style="color:var(--muted);font-size:11px">(מזדמן)</span>';
+  const c=getCustomer(inv.customerId);
+  return c?c.name:'—';
+}
+
+function renderInvoices(){
+  renderStats();
+  renderAlertBanner();
+  let invs=[...db.invoices];
+  if(db.activeFilter!=='all') invs=invs.filter(i=>i.status===db.activeFilter);
+  if(db.searchQuery){
+    const q=db.searchQuery.toLowerCase();
+    invs=invs.filter(i=>{
+      const n=i.custData?i.custData.name:(getCustomer(i.customerId)?.name||'');
+      return i.number.toLowerCase().includes(q)||n.toLowerCase().includes(q);
+    });
+  }
+  invs.sort((a,b)=>b.id-a.id);
+  if(!invs.length){document.getElementById('invoices-table').innerHTML='<div class="empty"><div class="empty-icon">🧾</div>אין חשבוניות</div>';return;}
+  document.getElementById('invoices-table').innerHTML=`<table><thead><tr>
+    <th>מספר</th><th>לקוח</th><th>תאריך</th><th>לתשלום עד</th><th>סכום</th><th>הקצאה</th><th>סטטוס</th><th>פעולות</th>
+  </tr></thead><tbody>${invs.map(inv=>{
+    const tot=calcInv(inv.items).total;
+    const isCredit=inv.status==='credit';
+    const hasCredit=db.invoices.some(i=>i.creditFor===inv.id);
+    const creditedBy=inv.creditFor?db.invoices.find(i=>i.id===inv.creditFor):null;
+    const numCell=isCredit
+      ?`<strong style="color:#6b21a8">${inv.number}</strong>${creditedBy?`<div style="font-size:10px;color:var(--muted)">זיכוי ל-${creditedBy.number}</div>`:''}`
+      :`<strong>${inv.number}</strong>${hasCredit?`<div style="font-size:10px;color:#6b21a8">✓ זוכה</div>`:''}`;
+    const {sub:invSub}=calcInv(inv.items);
+    const needsAlloc=!inv.isCredit&&needsAllocation(invSub);
+    const allocCell=inv.allocationNum
+      ?`<span style="font-size:11px;font-family:monospace;background:#f0fdf4;color:#166534;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">${inv.allocationNum}</span>`
+      :(needsAlloc?`<span style="font-size:11px;color:#ea580c;cursor:pointer;" onclick="editInvoice(${inv.id})" title="לחץ להוספת מספר הקצאה">⚠️ חסר</span>`:'<span style="color:var(--muted);font-size:11px;">—</span>');
+    return`<tr style="${isCredit?'background:#faf5ff':''}">
+      <td>${numCell}</td>
+      <td>${getInvCustomerName(inv)}</td>
+      <td>${inv.date}</td><td>${inv.due||'—'}</td>
+      <td class="sum" style="${isCredit?'color:#6b21a8':''}">₪${fmt(Math.abs(tot))}${isCredit?' (זיכוי)':''}</td>
+      <td>${allocCell}</td>
+      <td><span class="badge ${statusClass(inv.status)}">${statusLabel(inv.status)}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${inv.id})" title="עריכה">✏️</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="previewInvoiceById(${inv.id})" title="תצוגה מקדימה">👁️</button>
+        <button class="wa-btn wa-btn-sm" onclick="quickSendWA(${inv.id})" title="שלח ווצאפ מהיר">${waIcon}</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openWAModal(${inv.id})" title="ווצאפ + קישור" style="font-size:11px;padding:4px 7px;">📎WA</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="printInvoiceById(${inv.id})" title="הורד PDF">🖨️</button>
+        ${!isCredit&&!hasCredit?`<button class="btn btn-sm" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;font-size:11px;padding:4px 8px;" onclick="createCreditNote(${inv.id})" title="צור חשבונית זיכוי">זכה</button>`:''}
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvoice(${inv.id})" title="מחק">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+// Customer mode toggle
+function setCustMode(mode){
+  db.custMode=mode;
+  document.getElementById('cust-mode-saved').classList.toggle('active',mode==='saved');
+  document.getElementById('cust-mode-onetime').classList.toggle('active',mode==='onetime');
+  document.getElementById('cust-saved-section').style.display=mode==='saved'?'block':'none';
+  document.getElementById('cust-onetime-section').style.display=mode==='onetime'?'block':'none';
+}
+
+function saveOnetimeCust(){
+  const name=document.getElementById('ot-cust-name').value.trim();
+  if(!name){toast('יש להזין שם לקוח');return;}
+  const data={name,phone:document.getElementById('ot-cust-phone').value,email:document.getElementById('ot-cust-email').value,address:document.getElementById('ot-cust-address').value,vat:document.getElementById('ot-cust-vat').value,notes:''};
+  const id=db.customers.length?Math.max(...db.customers.map(c=>c.id))+1:1;
+  db.customers.push({id,...data});
+  save();
+  // switch to saved mode and select new customer
+  populateCustDropdown();
+  document.getElementById('inv-customer').value=id;
+  setCustMode('saved');
+  toast('✅ הלקוח נוסף לרשימה');
+}
+
+function openNewInvoice(){
+  db.editInvId=null;
+  document.getElementById('inv-modal-title').textContent='חשבונית חדשה';
+  populateCustDropdown(); populateQuickItems();
+  setCustMode('saved');
+  document.getElementById('inv-customer').value='';
+  ['ot-cust-name','ot-cust-phone','ot-cust-email','ot-cust-address','ot-cust-vat'].forEach(id=>document.getElementById(id).value='');
+  const d=today();
+  document.getElementById('inv-date').value=d;
+  document.getElementById('inv-payment-terms').value=String(db.settings.paymentDays||30)==='0'?'immediate':String(db.settings.paymentDays||30);
+  recalcDueDate();
+  document.getElementById('inv-status').value='unpaid';
+  document.getElementById('inv-notes').value='';
+  document.getElementById('inv-total-cost').value='';
+  document.getElementById('inv-allocation-num').value='';
+  document.getElementById('allocation-section').style.display='none';
+  document.getElementById('inv-items-body').innerHTML='';
+  addInvoiceRow();
+  updateTotals();
+  document.getElementById('invoice-modal').style.display='flex';
+}
+
+function editInvoice(id){
+  const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
+  db.editInvId=id;
+  document.getElementById('inv-modal-title').textContent='עריכת '+inv.number;
+  populateCustDropdown(); populateQuickItems();
+  if(inv.custData){
+    setCustMode('onetime');
+    document.getElementById('ot-cust-name').value=inv.custData.name||'';
+    document.getElementById('ot-cust-phone').value=inv.custData.phone||'';
+    document.getElementById('ot-cust-email').value=inv.custData.email||'';
+    document.getElementById('ot-cust-address').value=inv.custData.address||'';
+    document.getElementById('ot-cust-vat').value=inv.custData.vat||'';
+  } else {
+    setCustMode('saved');
+    document.getElementById('inv-customer').value=inv.customerId||'';
+  }
+  document.getElementById('inv-date').value=inv.date;
+  document.getElementById('inv-payment-terms').value=inv.paymentTerms||'custom';
+  document.getElementById('inv-due').value=inv.due||'';
+  document.getElementById('inv-due').readOnly=(inv.paymentTerms&&inv.paymentTerms!=='custom');
+  document.getElementById('inv-due-hint').style.display='none';
+  document.getElementById('inv-status').value=inv.status;
+  document.getElementById('inv-notes').value=inv.notes||'';
+  document.getElementById('inv-total-cost').value=inv.totalCost||'';
+  document.getElementById('inv-allocation-num').value=inv.allocationNum||'';
+  document.getElementById('allocation-section').style.display='none';
+  document.getElementById('inv-items-body').innerHTML='';
+  inv.items.forEach(it=>addInvoiceRow(it));
+  updateTotals();
+  // set inner cost input after render
+  const inner=document.getElementById('inv-total-cost-inner');
+  if(inner) { inner.value=inv.totalCost||''; onCostChange(inner.value); }
+  document.getElementById('invoice-modal').style.display='flex';
+}
+
+function populateCustDropdown(){
+  document.getElementById('inv-customer').innerHTML='<option value="">-- בחר לקוח --</option>'+
+    db.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function populateQuickItems(){
+  const sel=document.getElementById('quick-item');
+  sel.innerHTML='<option value="">הוסף מפריטים שמורים...</option>'+
+    db.items.map(it=>`<option value="${it.id}">${it.name} — ₪${it.price}</option>`).join('');
+  sel.onchange=function(){
+    const it=db.items.find(i=>i.id==this.value);
+    if(it){addInvoiceRow({desc:it.name,qty:1,price:it.price,vat:it.vat});this.value='';updateTotals();}
+  };
+}
+
+function addInvoiceRow(it){
+  const defVat=db.settings.defaultVat!=null?db.settings.defaultVat:18;
+  const tr=document.createElement('tr');
+  const desc=it?.desc||'',qty=it?.qty!=null?it.qty:1,price=it?.price||'',vat=it?.vat!=null?it.vat:defVat;
+  tr.innerHTML=`
+    <td><input type="text" value="${desc}" placeholder="תיאור פריט / שירות" oninput="updateTotals()"></td>
+    <td><input type="number" value="${qty}" min="0.01" step="0.01" style="width:55px" oninput="updateTotals()"></td>
+    <td><input type="number" value="${price}" min="0" step="0.01" placeholder="0.00" oninput="updateTotals()"></td>
+    <td><select style="width:65px" onchange="updateTotals()">
+      <option value="18" ${vat==18?'selected':''}>18%</option>
+      <option value="0" ${vat==0?'selected':''}>0%</option>
+    </select></td>
+    <td class="sum" style="min-width:72px">₪0.00</td>
+    <td><button class="btn btn-secondary btn-sm" style="padding:3px 7px;font-size:11px;white-space:nowrap" title="שמור פריט" onclick="saveRowAsItem(this)">💾</button></td>
+    <td><button class="delete-row" onclick="this.closest('tr').remove();updateTotals()">×</button></td>`;
+  document.getElementById('inv-items-body').appendChild(tr);
+  updateTotals();
+}
+
+function saveRowAsItem(btn){
+  const row=btn.closest('tr');
+  const inputs=row.querySelectorAll('input');
+  const sel=row.querySelector('select');
+  const name=inputs[0].value.trim();
+  if(!name){toast('הכנס תיאור לפריט');return;}
+  const price=parseFloat(inputs[2].value)||0;
+  const vat=parseFloat(sel.value)||0;
+  const existing=db.items.find(i=>i.name===name);
+  if(existing){toast('פריט עם שם זה כבר קיים');return;}
+  const id=db.items.length?Math.max(...db.items.map(i=>i.id))+1:1;
+  db.items.push({id,name,price,vat,desc:''});
+  save(); populateQuickItems();
+  toast('✅ הפריט נשמר לרשימה');
+}
+
+function getInvItems(){
+  return Array.from(document.querySelectorAll('#inv-items-body tr')).map(row=>{
+    const inp=row.querySelectorAll('input');
+    const sel=row.querySelector('select');
+    return{desc:inp[0].value,qty:parseFloat(inp[1].value)||1,price:parseFloat(inp[2].value)||0,vat:parseFloat(sel.value)||0};
+  });
+}
+
+function updateTotals(){
+  document.querySelectorAll('#inv-items-body tr').forEach(row=>{
+    const inp=row.querySelectorAll('input');
+    const line=(parseFloat(inp[1].value)||0)*(parseFloat(inp[2].value)||0);
+    const td=row.querySelectorAll('td')[4];
+    if(td) td.textContent='₪'+fmt(line);
+  });
+  const items=getInvItems();
+  const{sub,tax,total}=calcInv(items);
+
+  // שמור ערך עלות קיים לפני render מחדש
+  const prevCost=document.getElementById('inv-total-cost-inner')?.value||'';
+
+  const profit=sub-(parseFloat(prevCost)||0);
+  const profitPct=(parseFloat(prevCost)||0)>0?((profit/(parseFloat(prevCost)||0))*100).toFixed(1):null;
+  const profitColor=profit>=0?'#166534':'#dc2626';
+
+  document.getElementById('inv-totals').innerHTML=`
+    <div class="totals-row"><span>סכום לפני מע"מ</span><span>₪${fmt(sub)}</span></div>
+    <div class="totals-row"><span>מע"מ</span><span>₪${fmt(tax)}</span></div>
+    <div class="totals-row total-final"><span>סה"כ לתשלום</span><span>₪${fmt(total)}</span></div>
+    <div style="border-top:1px dashed #d1fae5;margin-top:10px;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;font-weight:600;color:#166534;">💰 עלות (₪):</span>
+        <input type="number" id="inv-total-cost-inner" min="0" step="0.01" placeholder="0.00"
+          value="${prevCost}"
+          style="width:110px;border:1px solid #86efac;border-radius:7px;padding:5px 9px;font-family:Heebo,sans-serif;font-size:13px;background:white;outline:none;color:#166534;"
+          oninput="onCostChange(this.value)">
+      </div>
+      <div id="profit-inline" style="font-size:13px;font-weight:600;color:${profitColor}">
+        ${(parseFloat(prevCost)||0)>0?`רווח גולמי: ₪${fmt(profit)} (${profitPct}%)`:'<span style="color:#9ca3af;font-weight:400">הכנס עלות לחישוב רווח</span>'}
+      </div>
+    </div>`;
+
+  // sync hidden field for save
+  const hidden=document.getElementById('inv-total-cost');
+  if(hidden) hidden.value=prevCost;
+
+  checkAllocationWarning();
+}
+
+function onCostChange(val){
+  // update hidden field and recalc profit inline without full re-render
+  const hidden=document.getElementById('inv-total-cost');
+  if(hidden) hidden.value=val;
+  const items=getInvItems();
+  const{sub}=calcInv(items);
+  const cost=parseFloat(val)||0;
+  const profit=sub-cost;
+  const profitPct=cost>0?((profit/cost)*100).toFixed(1):null;
+  const el=document.getElementById('profit-inline');
+  if(el){
+    if(cost>0){
+      el.innerHTML=`רווח גולמי: ₪${fmt(profit)} (${profitPct}%)`;
+      el.style.color=profit>=0?'#166534':'#dc2626';
+    } else {
+      el.innerHTML='<span style="color:#9ca3af;font-weight:400">הכנס עלות לחישוב רווח</span>';
+      el.style.color='#166534';
+    }
+  }
+}
+
+function saveInvoice(){
+  const items=getInvItems();
+  if(!items.length||!items[0].desc){toast('יש להוסיף לפחות פריט אחד');return;}
+
+  let custData=null, customerId=null;
+  if(db.custMode==='onetime'){
+    const name=document.getElementById('ot-cust-name').value.trim();
+    if(!name){toast('יש להזין שם לקוח מזדמן');return;}
+    custData={name,phone:document.getElementById('ot-cust-phone').value,email:document.getElementById('ot-cust-email').value,address:document.getElementById('ot-cust-address').value,vat:document.getElementById('ot-cust-vat').value};
+  } else {
+    customerId=document.getElementById('inv-customer').value;
+    if(!customerId){toast('יש לבחור לקוח');return;}
+    customerId=parseInt(customerId);
+  }
+
+  const allocationNum=document.getElementById('inv-allocation-num').value.trim();
+  const inner=document.getElementById('inv-total-cost-inner');
+  const totalCost=parseFloat((inner?.value)||document.getElementById('inv-total-cost').value)||0;
+  const {sub}=calcInv(items);
+  if(needsAllocation(sub)&&!allocationNum){
+    const threshold=getAllocationThreshold();
+    if(!confirm(`הסכום (₪${fmt(sub)} לפני מע"מ) עולה על הסף הנוכחי של ₪${fmt(threshold)}.\nחשבונית ללא מספר הקצאה — הלקוח לא יוכל לנכות מס תשומות.\nלהמשיך בכל זאת?`)) return;
+  }
+  const data={customerId,custData,date:document.getElementById('inv-date').value,due:document.getElementById('inv-due').value,paymentTerms:document.getElementById('inv-payment-terms').value,status:document.getElementById('inv-status').value,items,notes:document.getElementById('inv-notes').value,allocationNum,totalCost};
+
+  if(db.editInvId){
+    const idx=db.invoices.findIndex(i=>i.id===db.editInvId);
+    db.invoices[idx]={...db.invoices[idx],...data};
+    toast('✅ החשבונית עודכנה');
+  } else {
+    const prefix=db.settings.invPrefix||'INV-';
+    const num=prefix+String(db.nextId).padStart(3,'0');
+    db.invoices.push({id:db.nextId++,number:num,...data});
+    db.settings.invNext=db.nextId;
+    toast('✅ החשבונית נוצרה');
+  }
+  save(); closeModal('invoice-modal'); renderInvoices();
+}
+
+function deleteInvoice(id){
+  if(!confirm('למחוק את החשבונית לצמיתות?')) return;
+  db.invoices=db.invoices.filter(i=>i.id!==id);
+  save(); renderInvoices(); toast('החשבונית נמחקה');
+}
+
+// ─── WhatsApp ───
+function getInvCustForWA(inv){
+  if(inv.custData) return inv.custData;
+  return getCustomer(inv.customerId)||{};
+}
+
+function buildInvLink(inv){
+  const html=buildPrintHTML(inv);
+  const encoded=btoa(unescape(encodeURIComponent(html)));
+  return `data:text/html;base64,${encoded}`;
+}
+
+function termsLabel(terms){
+  if(!terms||terms==='custom') return '';
+  if(terms==='immediate') return 'תשלום מיידי';
+  return `שוטף + ${terms}`;
+}
+
+function openWAModal(id){
+  db.currentWaInvId=id;
+  const inv=db.invoices.find(i=>i.id===id);
+  const c=getInvCustForWA(inv);
+  const tot=calcInv(inv.items).total;
+  const co=db.settings.companyName||'החברה שלנו';
+  const tl=termsLabel(inv.paymentTerms);
+  const phone=(c.phone||'').replace(/[-\s]/g,'').replace(/^0/,'972');
+  document.getElementById('wa-phone').value=phone;
+
+  const msg=`שלום ${c.name||''},\n\nמצורפת חשבונית ${inv.number} בסך ₪${fmt(tot)}.\n`+
+    (inv.due?`תאריך לתשלום: ${inv.due}${tl?' ('+tl+')':''}\n`:'')+
+    (db.settings.bank?`\nלתשלום: ${db.settings.bank}\n`:'')+
+    `\nתודה,\n${co}`;
+  document.getElementById('wa-message').value=msg;
+  document.getElementById('wa-modal').style.display='flex';
+}
+
+function downloadInvForWA(){
+  if(db.currentWaInvId){
+    const inv=db.invoices.find(i=>i.id===db.currentWaInvId); if(!inv) return;
+    const html=inv.isCredit?buildCreditHTML(inv):buildPrintHTML(inv);
+    downloadHTML(html,`חשבונית-${inv.number}.html`);
+    toast('✅ קובץ החשבונית הורד — שלח אותו בווצאפ כקובץ מצורף');
+  } else if(db._currentWaQuoteId){
+    const q=db.quotes.find(i=>i.id===db._currentWaQuoteId); if(!q) return;
+    downloadHTML(buildQuoteHTML(q),`הצעת-מחיר-${q.number}.html`);
+    toast('✅ קובץ ההצעה הורד — שלח אותו בווצאפ כקובץ מצורף');
+  } else {
+    toast('אין מסמך נבחר');
+  }
+}
+
+function copyWAMsg(){
+  const msg=document.getElementById('wa-message').value;
+  navigator.clipboard.writeText(msg).then(()=>toast('✅ ההודעה הועתקה!')).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=msg; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('✅ ההודעה הועתקה!');
+  });
+}
+
+function doOpenWA(){
+  const phone=document.getElementById('wa-phone').value.replace(/\D/g,'');
+  const url=phone?`https://wa.me/${phone}`:'https://web.whatsapp.com';
+  window.open(url,'_blank');
+}
+
+function sendWA(){
+  if(db.editInvId) openWAModal(db.editInvId);
+  else toast('שמור תחילה את החשבונית');
+}
+
+function doSendWA(){ doOpenWA(); }
+
+// ─── Preview ───
+let previewInvData=null;
+
+function previewInvoice(){
+  const items=getInvItems();
+  let c={};
+  if(db.custMode==='onetime'){
+    c={name:document.getElementById('ot-cust-name').value,phone:document.getElementById('ot-cust-phone').value,email:document.getElementById('ot-cust-email').value,address:document.getElementById('ot-cust-address').value,vat:document.getElementById('ot-cust-vat').value};
+  } else {
+    const cid=document.getElementById('inv-customer').value;
+    if(cid) c=getCustomer(parseInt(cid))||{};
+  }
+  const s=db.settings;
+  const prefix=s.invPrefix||'INV-';
+  const num=db.editInvId?(db.invoices.find(i=>i.id===db.editInvId)?.number||prefix+'???'):prefix+String(db.nextId).padStart(3,'0');
+  previewInvData={
+    id:db.editInvId||0, number:num,
+    customerId:null, custData:c,
+    date:document.getElementById('inv-date').value,
+    due:document.getElementById('inv-due').value,
+    paymentTerms:document.getElementById('inv-payment-terms').value,
+    status:document.getElementById('inv-status').value,
+    allocationNum:document.getElementById('inv-allocation-num').value,
+    items, notes:document.getElementById('inv-notes').value
+  };
+  const html=buildPrintHTML(previewInvData);
+  const iframe=document.getElementById('preview-iframe');
+  document.getElementById('preview-modal-title').textContent='תצוגה מקדימה — '+num;
+  iframe.srcdoc=html;
+  document.getElementById('preview-modal').style.display='flex';
+}
+
+// ─── Quotes ───
+function setQuoteFilter(f,btn){
+  db.activeQuoteFilter=f;
+  document.querySelectorAll('#quotes-filter-bar .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderQuotes();
+}
+
+function qStatusLabel(s){return{draft:'טיוטה',sent:'נשלח',approved:'אושר ✓',rejected:'נדחה'}[s]||s;}
+function qStatusClass(s){return{draft:'badge-draft',sent:'badge-partial',approved:'badge-paid',rejected:'badge-unpaid'}[s]||'badge-draft';}
+
+function getQuoteCustName(q){
+  if(q.custData) return q.custData.name+' <span style="color:var(--muted);font-size:11px">(מזדמן)</span>';
+  const c=getCustomer(q.customerId);
+  return c?c.name:'—';
+}
+
+function renderQuotes(){
+  const qs=db.quotes||[];
+  const total=qs.reduce((a,q)=>a+calcInv(q.items).total,0);
+  const approved=qs.filter(q=>q.status==='approved').reduce((a,q)=>a+calcInv(q.items).total,0);
+  const pending=qs.filter(q=>q.status==='sent').reduce((a,q)=>a+calcInv(q.items).total,0);
+  document.getElementById('quotes-stats-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-label">סה"כ הצעות</div><div class="stat-val">${qs.length}</div></div>
+    <div class="stat-card"><div class="stat-label">שווי כולל</div><div class="stat-val green">₪${fmt(total)}</div></div>
+    <div class="stat-card"><div class="stat-label">אושרו</div><div class="stat-val green">₪${fmt(approved)}</div></div>
+    <div class="stat-card"><div class="stat-label">ממתינות לאישור</div><div class="stat-val orange">₪${fmt(pending)}</div></div>`;
+
+  let list=[...qs];
+  if(db.activeQuoteFilter!=='all') list=list.filter(q=>q.status===db.activeQuoteFilter);
+  if(db.quoteSearch){const q=db.quoteSearch.toLowerCase();list=list.filter(q2=>{const n=q2.custData?q2.custData.name:(getCustomer(q2.customerId)?.name||'');return q2.number.toLowerCase().includes(q)||n.toLowerCase().includes(q);});}
+  list.sort((a,b)=>b.id-a.id);
+
+  if(!list.length){document.getElementById('quotes-table').innerHTML='<div class="empty"><div class="empty-icon">📋</div>אין הצעות מחיר</div>';return;}
+  document.getElementById('quotes-table').innerHTML=`<table><thead><tr>
+    <th>מספר</th><th>לקוח</th><th>תאריך</th><th>תוקף עד</th><th>סכום</th><th>סטטוס</th><th>פעולות</th>
+  </tr></thead><tbody>${list.map(q=>{
+    const tot=calcInv(q.items).total;
+    const expired=q.validUntil&&q.validUntil<today()&&q.status!=='approved'&&q.status!=='rejected';
+    return`<tr>
+      <td><strong>${q.number}</strong></td>
+      <td>${getQuoteCustName(q)}</td>
+      <td>${q.date}</td>
+      <td>${q.validUntil||'—'}${expired?'<span style="color:var(--danger);font-size:11px;margin-right:4px"> פג תוקף</span>':''}</td>
+      <td class="sum">₪${fmt(tot)}</td>
+      <td><span class="badge ${qStatusClass(q.status)}">${qStatusLabel(q.status)}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editQuote(${q.id})" title="עריכה">✏️</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="previewQuoteById(${q.id})" title="תצוגה מקדימה">👁️</button>
+        <button class="wa-btn wa-btn-sm" onclick="openQuoteWAModal(${q.id})" title="שלח בווצאפ">${waIcon}</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="printQuoteById(${q.id})" title="הדפס">🖨️</button>
+        <button class="btn btn-primary btn-sm" onclick="convertQuoteToInvoice(${q.id})" title="המר לחשבונית" style="font-size:11px;padding:4px 8px;">🧾 המר</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteQuote(${q.id})" title="מחק">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function setQCustMode(mode){
+  db.qCustMode=mode;
+  document.getElementById('qcust-mode-saved').classList.toggle('active',mode==='saved');
+  document.getElementById('qcust-mode-onetime').classList.toggle('active',mode==='onetime');
+  document.getElementById('qcust-saved-section').style.display=mode==='saved'?'block':'none';
+  document.getElementById('qcust-onetime-section').style.display=mode==='onetime'?'block':'none';
+}
+
+function populateQtCustDropdown(){
+  document.getElementById('qt-customer').innerHTML='<option value="">-- בחר לקוח --</option>'+
+    db.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function populateQtQuickItems(){
+  const sel=document.getElementById('qt-quick-item');
+  sel.innerHTML='<option value="">הוסף מפריטים שמורים...</option>'+
+    db.items.map(it=>`<option value="${it.id}">${it.name} — ₪${it.price}</option>`).join('');
+  sel.onchange=function(){
+    const it=db.items.find(i=>i.id==this.value);
+    if(it){addQuoteRow({desc:it.name,qty:1,price:it.price,vat:it.vat});this.value='';updateQtTotals();}
+  };
+}
+
+function addQuoteRow(it){
+  const defVat=db.settings.defaultVat!=null?db.settings.defaultVat:18;
+  const tr=document.createElement('tr');
+  const desc=it?.desc||'',qty=it?.qty||1,price=it?.price||'',vat=it?.vat!=null?it.vat:defVat;
+  tr.innerHTML=`
+    <td><input type="text" value="${desc}" placeholder="תיאור פריט" oninput="updateQtTotals()"></td>
+    <td><input type="number" value="${qty}" min="0.01" step="0.01" style="width:55px" oninput="updateQtTotals()"></td>
+    <td><input type="number" value="${price}" min="0" step="0.01" placeholder="0.00" oninput="updateQtTotals()"></td>
+    <td><select style="width:65px" onchange="updateQtTotals()">
+      <option value="18" ${vat==18?'selected':''}>18%</option>
+      <option value="0" ${vat==0?'selected':''}>0%</option>
+    </select></td>
+    <td class="sum" style="min-width:72px">₪0.00</td>
+    <td><button class="btn btn-secondary btn-sm" style="padding:3px 7px;font-size:11px" onclick="saveQtRowAsItem(this)">💾</button></td>
+    <td><button class="delete-row" onclick="this.closest('tr').remove();updateQtTotals()">×</button></td>`;
+  document.getElementById('qt-items-body').appendChild(tr);
+  updateQtTotals();
+}
+
+function saveQtRowAsItem(btn){
+  const row=btn.closest('tr');const inputs=row.querySelectorAll('input');const sel=row.querySelector('select');
+  const name=inputs[0].value.trim();if(!name){toast('הכנס תיאור לפריט');return;}
+  if(db.items.find(i=>i.name===name)){toast('פריט עם שם זה כבר קיים');return;}
+  const id=db.items.length?Math.max(...db.items.map(i=>i.id))+1:1;
+  db.items.push({id,name,price:parseFloat(inputs[2].value)||0,vat:parseFloat(sel.value)||0,desc:''});
+  save();populateQtQuickItems();toast('✅ הפריט נשמר');
+}
+
+function getQtItems(){
+  return Array.from(document.querySelectorAll('#qt-items-body tr')).map(row=>{
+    const inp=row.querySelectorAll('input');const sel=row.querySelector('select');
+    return{desc:inp[0].value,qty:parseFloat(inp[1].value)||1,price:parseFloat(inp[2].value)||0,vat:parseFloat(sel.value)||0};
+  });
+}
+
+function updateQtTotals(){
+  document.querySelectorAll('#qt-items-body tr').forEach(row=>{
+    const inp=row.querySelectorAll('input');
+    const line=(parseFloat(inp[1].value)||0)*(parseFloat(inp[2].value)||0);
+    const td=row.querySelectorAll('td')[4];if(td) td.textContent='₪'+fmt(line);
+  });
+  const{sub,tax,total}=calcInv(getQtItems());
+  document.getElementById('qt-totals').innerHTML=`
+    <div class="totals-row"><span>סכום לפני מע"מ</span><span>₪${fmt(sub)}</span></div>
+    <div class="totals-row"><span>מע"מ</span><span>₪${fmt(tax)}</span></div>
+    <div class="totals-row total-final"><span>סה"כ הצעה</span><span>₪${fmt(total)}</span></div>`;
+}
+
+function openNewQuote(){
+  db.editQuoteId=null;
+  document.getElementById('quote-modal-title').textContent='הצעת מחיר חדשה';
+  populateQtCustDropdown(); populateQtQuickItems();
+  setQCustMode('saved');
+  document.getElementById('qt-customer').value='';
+  ['qt-ot-name','qt-ot-phone','qt-ot-email','qt-ot-address'].forEach(id=>document.getElementById(id).value='');
+  const d=today();
+  document.getElementById('qt-date').value=d;
+  document.getElementById('qt-valid').value=addDays(d,30);
+  document.getElementById('qt-status').value='draft';
+  document.getElementById('qt-notes').value='';
+  document.getElementById('qt-items-body').innerHTML='';
+  addQuoteRow(); updateQtTotals();
+  document.getElementById('quote-modal').style.display='flex';
+}
+
+function editQuote(id){
+  const q=db.quotes.find(i=>i.id===id); if(!q) return;
+  db.editQuoteId=id;
+  document.getElementById('quote-modal-title').textContent='עריכת '+q.number;
+  populateQtCustDropdown(); populateQtQuickItems();
+  if(q.custData){
+    setQCustMode('onetime');
+    document.getElementById('qt-ot-name').value=q.custData.name||'';
+    document.getElementById('qt-ot-phone').value=q.custData.phone||'';
+    document.getElementById('qt-ot-email').value=q.custData.email||'';
+    document.getElementById('qt-ot-address').value=q.custData.address||'';
+  } else {
+    setQCustMode('saved');
+    document.getElementById('qt-customer').value=q.customerId||'';
+  }
+  document.getElementById('qt-date').value=q.date;
+  document.getElementById('qt-valid').value=q.validUntil||'';
+  document.getElementById('qt-status').value=q.status;
+  document.getElementById('qt-notes').value=q.notes||'';
+  document.getElementById('qt-items-body').innerHTML='';
+  q.items.forEach(it=>addQuoteRow(it));
+  updateQtTotals();
+  document.getElementById('quote-modal').style.display='flex';
+}
+
+function saveQuote(){
+  const items=getQtItems();
+  if(!items.length||!items[0].desc){toast('יש להוסיף לפחות פריט אחד');return;}
+  let custData=null,customerId=null;
+  if(db.qCustMode==='onetime'){
+    const name=document.getElementById('qt-ot-name').value.trim();
+    if(!name){toast('יש להזין שם לקוח');return;}
+    custData={name,phone:document.getElementById('qt-ot-phone').value,email:document.getElementById('qt-ot-email').value,address:document.getElementById('qt-ot-address').value};
+  } else {
+    customerId=document.getElementById('qt-customer').value;
+    if(!customerId){toast('יש לבחור לקוח');return;}
+    customerId=parseInt(customerId);
+  }
+  const data={customerId,custData,date:document.getElementById('qt-date').value,validUntil:document.getElementById('qt-valid').value,status:document.getElementById('qt-status').value,items,notes:document.getElementById('qt-notes').value};
+  if(!db.quotes) db.quotes=[];
+  if(db.editQuoteId){
+    const idx=db.quotes.findIndex(q=>q.id===db.editQuoteId);
+    db.quotes[idx]={...db.quotes[idx],...data};
+    toast('✅ ההצעה עודכנה');
+  } else {
+    const prefix=db.settings.quotePrefix||'QT-';
+    const num=prefix+String(db.nextQuoteId||1).padStart(3,'0');
+    db.quotes.push({id:db.nextQuoteId||1,number:num,...data});
+    db.nextQuoteId=(db.nextQuoteId||1)+1;
+    toast('✅ הצעת המחיר נוצרה');
+  }
+  save(); closeModal('quote-modal'); renderQuotes();
+}
+
+function deleteQuote(id){
+  if(!confirm('למחוק את הצעת המחיר?')) return;
+  db.quotes=db.quotes.filter(q=>q.id!==id);
+  save(); renderQuotes(); toast('ההצעה נמחקה');
+}
+
+function convertQuoteToInvoice(id){
+  const q=db.quotes.find(i=>i.id===id); if(!q) return;
+  if(!confirm(`להמיר הצעה ${q.number} לחשבונית?`)) return;
+  const prefix=db.settings.invPrefix||'INV-';
+  const num=prefix+String(db.nextId).padStart(3,'0');
+  const d=today();
+  db.invoices.push({
+    id:db.nextId++, number:num,
+    customerId:q.customerId, custData:q.custData,
+    date:d, due:addDays(d,db.settings.paymentDays||30),
+    paymentTerms:String(db.settings.paymentDays||30),
+    status:'unpaid', items:[...q.items], notes:q.notes,
+    fromQuote:q.number
+  });
+  db.settings.invNext=db.nextId;
+  q.status='approved';
+  save(); renderQuotes();
+  toast(`✅ החשבונית ${num} נוצרה מהצעה ${q.number}`);
+}
+
+// Quote print/preview
+function buildQuoteHTML(q){
+  const c=q.custData||getCustomer(q.customerId)||{};
+  const{sub,tax,total}=calcInv(q.items);
+  const s=db.settings;
+  const logo=s.logoData?`<img src="${s.logoData}" style="height:55px;object-fit:contain;margin-bottom:6px" alt="לוגו">`:'';
+  const qStatusMap={draft:'טיוטה',sent:'נשלח',approved:'אושר',rejected:'נדחה'};
+  return`<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Heebo,sans-serif;padding:40px 50px;color:#1a1814;font-size:14px;direction:rtl;max-width:820px;margin:0 auto;position:relative}
+    .doc-type{font-size:11px;font-weight:600;letter-spacing:1.5px;color:#8a8680;text-transform:uppercase;margin-bottom:4px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #1e40af}
+    h1{font-size:26px;font-weight:700;color:#1e40af;margin:0 0 2px}
+    .co-sub{color:#8a8680;font-size:12px}
+    .inv-num{font-size:22px;font-weight:600}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-top:6px;background:#eff6ff;color:#1e40af}
+    .cust-box{background:#f0f4ff;border-radius:8px;padding:16px;margin-bottom:22px;display:flex;gap:30px;flex-wrap:wrap}
+    .cust-section{flex:1;min-width:160px}
+    .section-label{font-size:11px;font-weight:600;color:#8a8680;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+    table{width:100%;border-collapse:collapse;margin:0 0 18px}
+    th{background:#eff6ff;padding:9px 12px;text-align:right;font-size:12px;color:#1e40af;border-bottom:1px solid #bfdbfe}
+    td{padding:9px 12px;border-bottom:1px solid #e8e5de;font-size:13px}
+    .totals{width:280px;margin-right:auto}
+    .tr{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+    .tf{font-weight:700;font-size:16px;border-top:2px solid #1e40af;padding-top:10px;margin-top:4px;color:#1e40af}
+    .footer-note{margin-top:22px;padding:12px;background:#f7f6f3;border-radius:8px;font-size:12px;color:#8a8680}
+    .valid-note{margin-bottom:18px;font-size:13px;color:#555;background:#eff6ff;padding:10px 14px;border-radius:8px;border-right:3px solid #1e40af}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="top">
+    <div>${logo}<div class="doc-type">הצעת מחיר</div><h1>${s.companyName||'חשבונית+'}</h1><div class="co-sub">${s.companyTagline||''}</div>${s.phone?`<div class="co-sub">${s.phone}</div>`:''} ${s.email?`<div class="co-sub">${s.email}</div>`:''} ${s.vatNum?`<div class="co-sub">ח.פ: ${s.vatNum}</div>`:''}</div>
+    <div style="text-align:left"><div class="inv-num">${q.number}</div>
+      <div style="color:#8a8680;font-size:12px;margin-top:4px">תאריך: ${q.date}</div>
+      ${q.validUntil?`<div style="color:#8a8680;font-size:12px">תוקף עד: ${q.validUntil}</div>`:''}
+      <div><span class="badge">${qStatusMap[q.status]||q.status}</span></div>
+    </div>
+  </div>
+  ${q.validUntil?`<div class="valid-note">⏳ הצעה זו בתוקף עד ${q.validUntil}</div>`:''}
+  <div class="cust-box">
+    <div class="cust-section">
+      <div class="section-label">לכבוד</div>
+      <div style="font-weight:600;font-size:15px">${c.name||'—'}</div>
+      ${c.address?`<div style="color:#8a8680;font-size:13px">${c.address}</div>`:''}
+      ${c.phone?`<div style="color:#8a8680;font-size:13px">${c.phone}</div>`:''}
+      ${c.email?`<div style="color:#8a8680;font-size:13px">${c.email}</div>`:''}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>תיאור</th><th style="width:65px">כמות</th><th style="width:110px">מחיר יחידה</th><th style="width:65px">מע"מ</th><th style="width:100px">סה"כ</th></tr></thead>
+    <tbody>${q.items.map(it=>`<tr><td>${it.desc}</td><td>${it.qty}</td><td>₪${fmt(it.price)}</td><td>${it.vat}%</td><td style="font-weight:500">₪${fmt(it.qty*it.price)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="totals">
+    <div class="tr"><span>סכום לפני מע"מ</span><span>₪${fmt(sub)}</span></div>
+    <div class="tr"><span>מע"מ</span><span>₪${fmt(tax)}</span></div>
+    <div class="tr tf"><span>סה"כ הצעה</span><span>₪${fmt(total)}</span></div>
+  </div>
+  ${q.notes?`<div class="footer-note"><strong>תנאים והערות:</strong> ${q.notes}</div>`:''}
+  ${s.paymentNote?`<div class="footer-note" style="margin-top:8px">${s.paymentNote}</div>`:''}
+  </body></html>`;
+}
+
+function previewQuote(){
+  const items=getQtItems();
+  let c={};
+  if(db.qCustMode==='onetime'){c={name:document.getElementById('qt-ot-name').value,phone:document.getElementById('qt-ot-phone').value,email:document.getElementById('qt-ot-email').value,address:document.getElementById('qt-ot-address').value};}
+  else{const cid=document.getElementById('qt-customer').value;if(cid)c=getCustomer(parseInt(cid))||{};}
+  const prefix=db.settings.quotePrefix||'QT-';
+  const num=db.editQuoteId?(db.quotes.find(q=>q.id===db.editQuoteId)?.number||prefix+'???'):prefix+String(db.nextQuoteId||1).padStart(3,'0');
+  const tmp={id:0,number:num,custData:c,customerId:null,date:document.getElementById('qt-date').value,validUntil:document.getElementById('qt-valid').value,status:document.getElementById('qt-status').value,items,notes:document.getElementById('qt-notes').value,_isQuote:true};
+  previewInvData=tmp;
+  document.getElementById('preview-modal-title').textContent='תצוגה מקדימה — '+num;
+  document.getElementById('preview-iframe').srcdoc=buildQuoteHTML(tmp);
+  document.getElementById('preview-modal').style.display='flex';
+}
+
+function sendQuoteWA(){
+  if(!db.editQuoteId){toast('שמור תחילה את ההצעה');return;}
+  openQuoteWAModal(db.editQuoteId);
+}
+
+function openQuoteWAModal(id){
+  const q=db.quotes.find(i=>i.id===id); if(!q) return;
+  const c=q.custData||getCustomer(q.customerId)||{};
+  const tot=calcInv(q.items).total;
+  const co=db.settings.companyName||'החברה שלנו';
+  const phone=(c.phone||'').replace(/[-\s]/g,'').replace(/^0/,'972');
+  document.getElementById('wa-phone').value=phone;
+  const msg=`שלום ${c.name||''},\n\nשמחים לשלוח לך הצעת מחיר ${q.number} בסך ₪${fmt(tot)}.\n`+
+    (q.validUntil?`ההצעה בתוקף עד: ${q.validUntil}\n`:'')+
+    `\nתודה,\n${co}`;
+  document.getElementById('wa-message').value=msg;
+  // store quote id for download
+  db.currentWaInvId=null;
+  db._currentWaQuoteId=id;
+  document.getElementById('wa-modal').style.display='flex';
+}
+
+// ─── Print ───
+function buildPrintHTML(inv){
+  const c=inv.custData||getCustomer(inv.customerId)||{};
+  const{sub,tax,total}=calcInv(inv.items);
+  const s=db.settings;
+  const logo=s.logoData?`<img src="${s.logoData}" style="height:55px;object-fit:contain;margin-bottom:6px" alt="לוגו">`:'';
+  const tl=termsLabel(inv.paymentTerms);
+  return`<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Heebo,sans-serif;padding:40px 50px;color:#1a1814;font-size:14px;direction:rtl;max-width:820px;margin:0 auto;position:relative}
+    .doc-type{font-size:11px;font-weight:600;letter-spacing:1.5px;color:#8a8680;text-transform:uppercase;margin-bottom:4px}
+    .watermark{position:absolute;top:18px;left:50px;font-size:42px;font-weight:700;color:rgba(45,90,61,0.13);pointer-events:none;white-space:nowrap;z-index:0;letter-spacing:6px;border:3px solid rgba(45,90,61,0.13);padding:4px 18px;border-radius:6px;transform:rotate(-8deg);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #2d5a3d;position:relative;z-index:1}
+    h1{font-size:26px;font-weight:700;color:#2d5a3d;margin:0 0 2px}
+    .co-sub{color:#8a8680;font-size:12px}
+    .inv-num{font-size:22px;font-weight:600}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-top:6px}
+    .paid{background:#e8f2eb;color:#2d5a3d}.unpaid{background:#fdf2f1;color:#c0392b}.partial{background:#fef8f0;color:#d4790a}.draft{background:#f0f0f0;color:#666}
+    .cust-box{background:#f7f6f3;border-radius:8px;padding:16px;margin-bottom:22px;display:flex;gap:30px;flex-wrap:wrap;position:relative;z-index:1}
+    .cust-section{flex:1;min-width:160px}
+    .section-label{font-size:11px;font-weight:600;color:#8a8680;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+    table{width:100%;border-collapse:collapse;margin:0 0 18px;position:relative;z-index:1}
+    th{background:#f7f6f3;padding:9px 12px;text-align:right;font-size:12px;color:#8a8680;border-bottom:1px solid #e8e5de}
+    td{padding:9px 12px;border-bottom:1px solid #e8e5de;font-size:13px}
+    .totals{width:280px;margin-right:auto;position:relative;z-index:1}
+    .tr{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+    .tf{font-weight:700;font-size:16px;border-top:2px solid #2d5a3d;padding-top:10px;margin-top:4px}
+    .footer-note{margin-top:22px;padding:12px;background:#f7f6f3;border-radius:8px;font-size:12px;color:#8a8680;position:relative;z-index:1}
+    .from-quote{font-size:11px;color:#8a8680;margin-top:4px}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="watermark">מקור</div>
+  <div class="top">
+    <div>${logo}<div class="doc-type">חשבונית מס קבלה</div><h1>${s.companyName||'חשבונית+'}</h1><div class="co-sub">${s.companyTagline||''}</div>${s.phone?`<div class="co-sub">${s.phone}</div>`:''} ${s.email?`<div class="co-sub">${s.email}</div>`:''} ${s.vatNum?`<div class="co-sub">ח.פ: ${s.vatNum}</div>`:''}</div>
+    <div style="text-align:left"><div class="inv-num">${inv.number}</div>
+      <div style="color:#8a8680;font-size:12px;margin-top:4px">תאריך: ${inv.date}</div>
+      ${inv.due?`<div style="color:#8a8680;font-size:12px">לתשלום עד: ${inv.due}${tl?' ('+tl+')':''}</div>`:''}
+      ${inv.allocationNum?`<div style="margin-top:6px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:4px 10px;display:inline-block"><div style="font-size:9px;font-weight:600;color:#166534;letter-spacing:0.5px;text-transform:uppercase">מספר הקצאה</div><div style="font-size:15px;font-weight:700;color:#166534;letter-spacing:2px;font-family:monospace">${inv.allocationNum}</div></div>`:''}
+      ${inv.fromQuote?`<div class="from-quote">מבוסס על הצעה: ${inv.fromQuote}</div>`:''}
+      <div><span class="badge ${inv.status}">${statusLabel(inv.status)}</span></div>
+    </div>
+  </div>
+  <div class="cust-box">
+    <div class="cust-section">
+      <div class="section-label">לקוח</div>
+      <div style="font-weight:600;font-size:15px">${c.name||'—'}</div>
+      ${c.address?`<div style="color:#8a8680;font-size:13px">${c.address}</div>`:''}
+      ${c.phone?`<div style="color:#8a8680;font-size:13px">${c.phone}</div>`:''}
+      ${c.email?`<div style="color:#8a8680;font-size:13px">${c.email}</div>`:''}
+      ${c.vat?`<div style="color:#8a8680;font-size:13px">ח.פ: ${c.vat}</div>`:''}
+    </div>
+    ${s.bank?`<div class="cust-section"><div class="section-label">לתשלום</div><div style="font-size:13px;color:#555">${s.bank}</div></div>`:''}
+  </div>
+  <table>
+    <thead><tr><th>תיאור</th><th style="width:65px">כמות</th><th style="width:110px">מחיר יחידה</th><th style="width:65px">מע"מ</th><th style="width:100px">סה"כ</th></tr></thead>
+    <tbody>${inv.items.map(it=>`<tr><td>${it.desc}</td><td>${it.qty}</td><td>₪${fmt(it.price)}</td><td>${it.vat}%</td><td style="font-weight:500">₪${fmt(it.qty*it.price)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="totals">
+    <div class="tr"><span>סכום לפני מע"מ</span><span>₪${fmt(sub)}</span></div>
+    <div class="tr"><span>מע"מ</span><span>₪${fmt(tax)}</span></div>
+    <div class="tr tf"><span>סה"כ לתשלום</span><span>₪${fmt(total)}</span></div>
+  </div>
+  ${inv.notes?`<div class="footer-note"><strong>הערות:</strong> ${inv.notes}</div>`:''}
+  ${s.paymentNote?`<div class="footer-note" style="margin-top:8px">${s.paymentNote}</div>`:''}
+  </body></html>`;
+}
+
+function downloadHTML(html, filename){
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+}
+
+function printInvoiceById(id){
+  const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
+  const html=inv.isCredit?buildCreditHTML(inv):buildPrintHTML(inv);
+  const name=inv.isCredit?`זיכוי-${inv.number}.html`:`חשבונית-${inv.number}.html`;
+  downloadHTML(html, name);
+  toast('✅ הקובץ מורד — פתח אותו ולחץ Ctrl+P');
+}
+
+function printQuoteById(id){
+  const q=db.quotes.find(i=>i.id===id); if(!q) return;
+  downloadHTML(buildQuoteHTML(q), `הצעת-מחיר-${q.number}.html`);
+  toast('✅ ההצעה מורדת — פתח את הקובץ והדפס Ctrl+P');
+}
+
+function previewInvoiceById(id){
+  const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
+  previewInvData=inv;
+  document.getElementById('preview-modal-title').textContent='תצוגה מקדימה — '+inv.number;
+  document.getElementById('preview-iframe').srcdoc=inv.isCredit?buildCreditHTML(inv):buildPrintHTML(inv);
+  document.getElementById('preview-modal').style.display='flex';
+}
+
+function previewQuoteById(id){
+  const q=db.quotes.find(i=>i.id===id); if(!q) return;
+  previewInvData={...q,_isQuote:true};
+  document.getElementById('preview-modal-title').textContent='תצוגה מקדימה — '+q.number;
+  document.getElementById('preview-iframe').srcdoc=buildQuoteHTML(q);
+  document.getElementById('preview-modal').style.display='flex';
+}
+
+function doPrint(){
+  if(!db.editInvId){toast('שמור תחילה את החשבונית');return;}
+  printInvoiceById(db.editInvId);
+}
+
+function doPrintQuote(){
+  if(!db.editQuoteId){toast('שמור תחילה את ההצעה');return;}
+  printQuoteById(db.editQuoteId);
+}
+
+function doPrintFromPreview(){
+  if(!previewInvData) return;
+  let html;
+  if(previewInvData._isQuote) html=buildQuoteHTML(previewInvData);
+  else if(previewInvData.isCredit) html=buildCreditHTML(previewInvData);
+  else html=buildPrintHTML(previewInvData);
+  const name=previewInvData._isQuote?`הצעת-מחיר-${previewInvData.number}.html`:`חשבונית-${previewInvData.number}.html`;
+  downloadHTML(html, name);
+  toast('✅ הקובץ מורד — פתח אותו ולחץ Ctrl+P להדפסה / שמירה כ-PDF');
+}
+
+// ─── Credit Notes ───
+let creditSourceInv = null;
+
+function createCreditNote(id){
+  const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
+  if(db.invoices.some(i=>i.creditFor===id)){toast('חשבונית זיכוי כבר קיימת לחשבונית זו');return;}
+  creditSourceInv=inv;
+  const{total}=calcInv(inv.items);
+  const c=inv.custData||(getCustomer(inv.customerId)||{});
+  document.getElementById('credit-source-info').innerHTML=
+    `<strong>${inv.number}</strong> | ${c.name||'—'} | ₪${fmt(total)} | ${inv.date}`;
+  document.getElementById('credit-type').value='full';
+  document.getElementById('credit-date').value=today();
+  document.getElementById('credit-reason').value='';
+  document.getElementById('credit-partial-section').style.display='none';
+  document.getElementById('credit-custom-section').style.display='none';
+
+  // Build custom items checklist
+  document.getElementById('credit-items-list').innerHTML=inv.items.map((it,idx)=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;">
+      <input type="checkbox" checked data-idx="${idx}" style="width:16px;height:16px;cursor:pointer;" onchange="updateCreditPreview()">
+      <span style="flex:1;">${it.desc}</span>
+      <span style="color:var(--muted);">${it.qty} × ₪${fmt(it.price)} = ₪${fmt(it.qty*it.price)}</span>
+    </label>`).join('');
+
+  updateCreditAmount();
+  document.getElementById('credit-modal').style.display='flex';
+}
+
+function updateCreditAmount(){
+  const type=document.getElementById('credit-type').value;
+  const{total}=calcInv(creditSourceInv.items);
+  document.getElementById('credit-partial-section').style.display=type==='partial'?'block':'none';
+  document.getElementById('credit-custom-section').style.display=type==='custom'?'block':'none';
+  if(type==='partial'){
+    document.getElementById('credit-amount-hint').textContent=`סכום מקסימלי לזיכוי: ₪${fmt(total)}`;
+    document.getElementById('credit-amount').max=total;
+    document.getElementById('credit-amount').value='';
+    document.getElementById('credit-total-preview').textContent='₪0.00';
+  } else {
+    updateCreditPreview();
+  }
+}
+
+function updateCreditPreview(){
+  const type=document.getElementById('credit-type').value;
+  const{total}=calcInv(creditSourceInv.items);
+  let amount=0;
+  if(type==='full') amount=total;
+  else if(type==='partial') amount=parseFloat(document.getElementById('credit-amount').value)||0;
+  else if(type==='custom'){
+    const checks=document.querySelectorAll('#credit-items-list input[type=checkbox]');
+    checks.forEach(cb=>{
+      if(cb.checked){
+        const it=creditSourceInv.items[parseInt(cb.dataset.idx)];
+        amount+=it.qty*it.price*(1+(it.vat/100));
+      }
+    });
+  }
+  document.getElementById('credit-total-preview').textContent='₪'+fmt(amount);
+}
+
+function confirmCreditNote(){
+  if(!creditSourceInv) return;
+  const type=document.getElementById('credit-type').value;
+  const{total}=calcInv(creditSourceInv.items);
+  const reason=document.getElementById('credit-reason').value;
+  const date=document.getElementById('credit-date').value||today();
+
+  let creditItems=[];
+  if(type==='full'){
+    creditItems=creditSourceInv.items.map(it=>({...it, price:-Math.abs(it.price)}));
+  } else if(type==='partial'){
+    const amt=parseFloat(document.getElementById('credit-amount').value)||0;
+    if(!amt){toast('יש להזין סכום לזיכוי');return;}
+    if(amt>total){toast(`הסכום חורג מהחשבונית המקורית (₪${fmt(total)})`);return;}
+    // single line item for partial
+    const vatRate=creditSourceInv.items[0]?.vat||18;
+    const netAmt=amt/(1+vatRate/100);
+    creditItems=[{desc:`זיכוי חלקי על ${creditSourceInv.number}`,qty:1,price:-Math.abs(netAmt),vat:vatRate}];
+  } else {
+    const checks=document.querySelectorAll('#credit-items-list input[type=checkbox]');
+    checks.forEach(cb=>{
+      if(cb.checked){
+        const it=creditSourceInv.items[parseInt(cb.dataset.idx)];
+        creditItems.push({...it, price:-Math.abs(it.price)});
+      }
+    });
+    if(!creditItems.length){toast('יש לבחור לפחות פריט אחד');return;}
+  }
+
+  const prefix=(db.settings.invPrefix||'INV-')+'CR-';
+  const num=prefix+String(db.nextId).padStart(3,'0');
+  const creditInv={
+    id:db.nextId++, number:num,
+    customerId:creditSourceInv.customerId,
+    custData:creditSourceInv.custData,
+    date, due:'', paymentTerms:'custom',
+    status:'credit',
+    items:creditItems,
+    notes:reason||`זיכוי עבור חשבונית ${creditSourceInv.number}`,
+    creditFor:creditSourceInv.id,
+    isCredit:true,
+  };
+  db.invoices.push(creditInv);
+  db.settings.invNext=db.nextId;
+  save(); closeModal('credit-modal'); renderInvoices();
+  toast(`✅ חשבונית זיכוי ${num} הונפקה`);
+}
+
+function buildCreditHTML(inv){
+  const c=inv.custData||getCustomer(inv.customerId)||{};
+  const s=db.settings;
+  const origInv=inv.creditFor?db.invoices.find(i=>i.id===inv.creditFor):null;
+  const items=inv.items.map(it=>({...it,price:Math.abs(it.price)}));
+  const{sub,tax,total}=calcInv(items);
+  const logo=s.logoData?`<img src="${s.logoData}" style="height:55px;object-fit:contain;margin-bottom:6px" alt="לוגו">`:'';
+  return`<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Heebo,sans-serif;padding:40px 50px;color:#1a1814;font-size:14px;direction:rtl;max-width:820px;margin:0 auto;position:relative}
+    .doc-type{font-size:11px;font-weight:600;letter-spacing:1.5px;color:#6b21a8;text-transform:uppercase;margin-bottom:4px}
+    .watermark{position:absolute;top:18px;left:50px;font-size:42px;font-weight:700;color:rgba(107,33,168,0.13);pointer-events:none;white-space:nowrap;z-index:0;letter-spacing:6px;border:3px solid rgba(107,33,168,0.13);padding:4px 18px;border-radius:6px;transform:rotate(-8deg);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:2px solid #7c3aed;position:relative;z-index:1}
+    h1{font-size:26px;font-weight:700;color:#7c3aed;margin:0 0 2px}
+    .co-sub{color:#8a8680;font-size:12px}
+    .inv-num{font-size:22px;font-weight:600;color:#6b21a8}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;margin-top:6px;background:#f3e8ff;color:#6b21a8}
+    .cust-box{background:#faf5ff;border-radius:8px;padding:16px;margin-bottom:22px;display:flex;gap:30px;flex-wrap:wrap;border:1px solid #e9d5ff;position:relative;z-index:1}
+    .cust-section{flex:1;min-width:160px}
+    .section-label{font-size:11px;font-weight:600;color:#6b21a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+    .orig-ref{background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#6b21a8;position:relative;z-index:1}
+    table{width:100%;border-collapse:collapse;margin:0 0 18px;position:relative;z-index:1}
+    th{background:#faf5ff;padding:9px 12px;text-align:right;font-size:12px;color:#6b21a8;border-bottom:1px solid #e9d5ff}
+    td{padding:9px 12px;border-bottom:1px solid #e8e5de;font-size:13px}
+    .totals{width:280px;margin-right:auto;position:relative;z-index:1}
+    .tr{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+    .tf{font-weight:700;font-size:16px;border-top:2px solid #7c3aed;padding-top:10px;margin-top:4px;color:#6b21a8}
+    .footer-note{margin-top:22px;padding:12px;background:#faf5ff;border-radius:8px;font-size:12px;color:#6b21a8;border:1px solid #e9d5ff;position:relative;z-index:1}
+    @media print{body{padding:20px}}
+  </style></head><body>
+  <div class="watermark">זיכוי</div>
+  <div class="top">
+    <div>${logo}<div class="doc-type">חשבונית זיכוי</div><h1>${s.companyName||'חשבונית+'}</h1>
+      <div class="co-sub">${s.companyTagline||''}</div>
+      ${s.phone?`<div class="co-sub">${s.phone}</div>`:''}
+      ${s.email?`<div class="co-sub">${s.email}</div>`:''}
+      ${s.vatNum?`<div class="co-sub">ח.פ: ${s.vatNum}</div>`:''}
+    </div>
+    <div style="text-align:left">
+      <div class="inv-num">${inv.number}</div>
+      <div style="color:#8a8680;font-size:12px;margin-top:4px">תאריך: ${inv.date}</div>
+      <div><span class="badge">חשבונית זיכוי</span></div>
+    </div>
+  </div>
+  ${origInv?`<div class="orig-ref">📎 זיכוי עבור חשבונית מקורית: <strong>${origInv.number}</strong> מתאריך ${origInv.date}</div>`:''}
+  <div class="cust-box">
+    <div class="cust-section">
+      <div class="section-label">לקוח</div>
+      <div style="font-weight:600;font-size:15px">${c.name||'—'}</div>
+      ${c.address?`<div style="color:#8a8680;font-size:13px">${c.address}</div>`:''}
+      ${c.phone?`<div style="color:#8a8680;font-size:13px">${c.phone}</div>`:''}
+      ${c.vat?`<div style="color:#8a8680;font-size:13px">ח.פ: ${c.vat}</div>`:''}
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>תיאור</th><th style="width:65px">כמות</th><th style="width:110px">מחיר יחידה</th><th style="width:65px">מע"מ</th><th style="width:100px">סכום זיכוי</th></tr></thead>
+    <tbody>${items.map(it=>`<tr><td>${it.desc}</td><td>${it.qty}</td><td>₪${fmt(it.price)}</td><td>${it.vat}%</td><td style="font-weight:500;color:#6b21a8">₪${fmt(it.qty*it.price)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="totals">
+    <div class="tr"><span>סכום לפני מע"מ</span><span>₪${fmt(sub)}</span></div>
+    <div class="tr"><span>מע"מ</span><span>₪${fmt(tax)}</span></div>
+    <div class="tr tf"><span>סה"כ זיכוי</span><span>₪${fmt(total)}</span></div>
+  </div>
+  ${inv.notes?`<div class="footer-note"><strong>סיבת הזיכוי:</strong> ${inv.notes}</div>`:''}
+  </body></html>`;
+}
+
+// ─── Alert Banner ───
+let alertDismissed = false;
+
+function dismissAlert(){
+  alertDismissed = true;
+  document.getElementById('alert-banner').className='alert-banner hidden';
+}
+
+function renderAlertBanner(){
+  if(alertDismissed) return;
+  const banner=document.getElementById('alert-banner');
+  const todayStr=today();
+  const sevenDays=addDays(todayStr,7);
+
+  const overdue=db.invoices.filter(i=>!['paid','credit','voided'].includes(i.status)&&i.due&&i.due<todayStr);
+  const dueSoon=db.invoices.filter(i=>!['paid','credit','voided'].includes(i.status)&&i.due&&i.due>=todayStr&&i.due<=sevenDays);
+
+  if(!overdue.length&&!dueSoon.length){banner.className='alert-banner hidden';return;}
+
+  let html='';
+  if(overdue.length){
+    const sum=overdue.reduce((a,i)=>a+calcInv(i.items).total,0);
+    html+=`<span style="font-weight:600;color:#991b1b;white-space:nowrap;">⚠️ באיחור (${overdue.length}):</span>`;
+    html+=overdue.map(i=>{const c=i.custData||(getCustomer(i.customerId)||{});return`<span class="alert-item" onclick="editInvoice(${i.id})">📄 ${i.number} — ${c.name||'—'} ₪${fmt(calcInv(i.items).total)} • ${i.due}</span>`;}).join('');
+  }
+  if(dueSoon.length){
+    if(html) html+=`<span style="margin:0 4px;color:#d97706">|</span>`;
+    html+=`<span style="font-weight:600;color:#92400e;white-space:nowrap;">⏰ בשבוע הקרוב (${dueSoon.length}):</span>`;
+    html+=dueSoon.map(i=>{const c=i.custData||(getCustomer(i.customerId)||{});return`<span class="alert-item" onclick="editInvoice(${i.id})" style="color:#92400e;">📄 ${i.number} — ${c.name||'—'} ₪${fmt(calcInv(i.items).total)} • ${i.due}</span>`;}).join('');
+  }
+  html+=`<button class="alert-close" onclick="dismissAlert()" title="סגור">×</button>`;
+
+  banner.className=overdue.length?'alert-banner alert-overdue':'alert-banner';
+  banner.innerHTML=html;
+}
+
+// ─── Timeline ───
+function renderTimeline(){
+  // populate year selector
+  const years=[...new Set(db.invoices.filter(i=>i.due).map(i=>i.due.substring(0,4)))].sort();
+  const curYear=new Date().getFullYear().toString();
+  if(!years.includes(curYear)) years.push(curYear);
+  years.sort();
+  const sel=document.getElementById('timeline-year');
+  sel.innerHTML=years.map(y=>`<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`).join('');
+
+  const year=sel.value||curYear;
+  const monthNames=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const todayStr=today();
+
+  // stats
+  const yearInvs=db.invoices.filter(i=>i.due&&i.due.startsWith(year)&&!['credit','voided'].includes(i.status));
+  const yearTotal=yearInvs.reduce((a,i)=>a+calcInv(i.items).total,0);
+  const yearPaid=yearInvs.filter(i=>i.status==='paid').reduce((a,i)=>a+calcInv(i.items).total,0);
+  const yearUnpaid=yearInvs.filter(i=>i.status!=='paid').reduce((a,i)=>a+calcInv(i.items).total,0);
+  const yearProfit=yearInvs.reduce((a,i)=>{
+    const cost=i.totalCost||0;
+    return a+(calcInv(i.items).sub-cost);
+  },0);
+
+  document.getElementById('timeline-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-label">סה"כ גבייה ${year}</div><div class="stat-val green">₪${fmt(yearTotal)}</div></div>
+    <div class="stat-card"><div class="stat-label">שולם</div><div class="stat-val green">₪${fmt(yearPaid)}</div></div>
+    <div class="stat-card"><div class="stat-label">ממתין</div><div class="stat-val red">₪${fmt(yearUnpaid)}</div></div>
+    <div class="stat-card"><div class="stat-label">רווח גולמי ${year}</div><div class="stat-val" style="color:${yearProfit>=0?'var(--accent)':'var(--danger)'}">₪${fmt(yearProfit)}</div></div>
+  `;
+
+  // monthly grid
+  let html='';
+  for(let m=0;m<12;m++){
+    const monthStr=year+'-'+String(m+1).padStart(2,'0');
+    const invs=db.invoices.filter(i=>i.due&&i.due.startsWith(monthStr)&&!['credit','voided'].includes(i.status));
+    const monthTotal=invs.reduce((a,i)=>a+calcInv(i.items).total,0);
+    const isCurrentMonth=monthStr===todayStr.substring(0,7);
+    html+=`<div class="timeline-month" style="${isCurrentMonth?'border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)':''}">
+      <div class="timeline-month-header">
+        <span class="timeline-month-name">${monthNames[m]}${isCurrentMonth?' 📍':''}</span>
+        <span class="timeline-month-total">${monthTotal>0?'₪'+fmt(monthTotal):'—'}</span>
+      </div>`;
+    if(!invs.length){html+=`<div class="timeline-empty">אין חשבוניות</div>`;}
+    else{
+      invs.sort((a,b)=>a.due.localeCompare(b.due)).forEach(inv=>{
+        const c=inv.custData||(getCustomer(inv.customerId)||{});
+        const tot=calcInv(inv.items).total;
+        const isOverdue=inv.status!=='paid'&&inv.due<todayStr;
+        const isDueSoon=inv.status!=='paid'&&inv.due>=todayStr&&inv.due<=addDays(todayStr,7);
+        html+=`<div class="timeline-inv ${isOverdue?'timeline-overdue':isDueSoon?'timeline-due-soon':''}" onclick="showPage('invoices');editInvoice(${inv.id})">
+          <div>
+            <div style="font-weight:500">${inv.number}</div>
+            <div class="timeline-inv-name">${c.name||'—'} • ${inv.due}</div>
+          </div>
+          <div>
+            <div class="timeline-inv-amount">₪${fmt(tot)}</div>
+            <div style="text-align:left"><span class="badge ${statusClass(inv.status)}" style="font-size:10px;padding:2px 7px">${statusLabel(inv.status)}</span></div>
+          </div>
+        </div>`;
+      });
+    }
+    html+='</div>';
+  }
+  document.getElementById('timeline-grid').innerHTML=html;
+}
+
+// ─── Drive Backup / Restore ───
+function backupToDrive(){
+  const data=JSON.stringify({
+    customers:db.customers, items:db.items, invoices:db.invoices,
+    quotes:db.quotes||[], nextId:db.nextId, nextQuoteId:db.nextQuoteId||1, settings:{...db.settings,logoData:''}
+  },null,2);
+  const blob=new Blob([data],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=today();
+  a.href=url; a.download=`גיבוי-חשבונית-פלוס-${d}.json`; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},1000);
+  toast('✅ קובץ הגיבוי הורד — העלה אותו ל-Google Drive');
+}
+
+function restoreFromDrive(){
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.json'; input.style.display='none';
+  input.onchange=function(){
+    const file=this.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const parsed=JSON.parse(e.target.result);
+        if(!parsed.invoices||!parsed.customers){toast('❌ קובץ לא תקין');return;}
+        if(!confirm(`לשחזר נתונים מ-${file.name}?\n\nהנתונים הנוכחיים יוחלפו לצמיתות.`)) return;
+        const logo=db.settings.logoData; // שמור לוגו
+        db.customers=parsed.customers||[];
+        db.items=parsed.items||[];
+        db.invoices=parsed.invoices||[];
+        db.quotes=parsed.quotes||[];
+        db.nextId=parsed.nextId||1;
+        db.nextQuoteId=parsed.nextQuoteId||1;
+        db.settings={...parsed.settings,logoData:logo};
+        save(); updateSidebar(); renderInvoices(); renderAlertBanner();
+        toast('✅ הנתונים שוחזרו בהצלחה');
+      }catch(err){toast('❌ שגיאה בקריאת הקובץ');}
+    };
+    reader.readAsText(file);
+  };
+  document.body.appendChild(input); input.click();
+  document.body.removeChild(input);
+}
+
+// ─── Quick WhatsApp (2 clicks) ───
+function quickSendWA(id){
+  const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
+  const c=inv.custData||(getCustomer(inv.customerId)||{});
+  const tot=calcInv(inv.items).total;
+  const co=db.settings.companyName||'החברה שלנו';
+  const tl=termsLabel(inv.paymentTerms);
+  const phone=(c.phone||'').replace(/[-\s]/g,'').replace(/^0/,'972');
+  const msg=`שלום ${c.name||''},\n\nמצורפת חשבונית ${inv.number} בסך ₪${fmt(tot)}.\n`+
+    (inv.due?`תאריך לתשלום: ${inv.due}${tl?' ('+tl+')':''}\n`:'')+
+    (db.settings.bank?`\nלתשלום: ${db.settings.bank}\n`:'')+
+    `\nתודה,\n${co}`;
+  const url=phone?`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`:`https://web.whatsapp.com?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
+  toast('ווצאפ נפתח עם ההודעה מוכנה ✅');
+}
+
+// ─── Customers ───
+function renderCustomers(){
+  let custs=[...db.customers];
+  if(db.custSearch){const q=db.custSearch.toLowerCase();custs=custs.filter(c=>c.name.toLowerCase().includes(q)||c.phone?.includes(q)||c.email?.toLowerCase().includes(q));}
+  if(!custs.length){document.getElementById('customers-table').innerHTML='<div class="empty"><div class="empty-icon">👥</div>אין לקוחות</div>';return;}
+  document.getElementById('customers-table').innerHTML=`<table><thead><tr>
+    <th>שם</th><th>טלפון</th><th>אימייל</th><th>כתובת</th><th>ח.פ</th><th>חשבוניות</th><th>פעולות</th>
+  </tr></thead><tbody>${custs.map(c=>{
+    const cnt=db.invoices.filter(i=>i.customerId===c.id).length;
+    return`<tr>
+      <td><strong>${c.name}</strong></td>
+      <td><a href="tel:${c.phone}" style="color:var(--accent)">${c.phone||'—'}</a></td>
+      <td style="color:var(--muted)">${c.email||'—'}</td>
+      <td style="color:var(--muted)">${c.address||'—'}</td>
+      <td style="color:var(--muted)">${c.vat||'—'}</td>
+      <td><span class="badge badge-paid">${cnt}</span></td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editCustomer(${c.id})">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteCustomer(${c.id})">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function openCustomerModal(id){
+  db.editCustId=id||null;
+  const c=id?db.customers.find(x=>x.id===id):null;
+  document.getElementById('cust-modal-title').textContent=c?'עריכת לקוח':'לקוח חדש';
+  ['name','phone','email','address','vat','notes'].forEach(f=>document.getElementById('cust-'+f).value=c?.[f]||'');
+  document.getElementById('customer-modal').style.display='flex';
+}
+function editCustomer(id){openCustomerModal(id);}
+
+function saveCustomer(){
+  const name=document.getElementById('cust-name').value.trim();
+  if(!name){toast('יש להזין שם לקוח');return;}
+  const data={name,phone:document.getElementById('cust-phone').value,email:document.getElementById('cust-email').value,address:document.getElementById('cust-address').value,vat:document.getElementById('cust-vat').value,notes:document.getElementById('cust-notes').value};
+  if(db.editCustId){
+    const idx=db.customers.findIndex(c=>c.id===db.editCustId);
+    db.customers[idx]={...db.customers[idx],...data};
+    toast('הלקוח עודכן');
+  } else {
+    const id=db.customers.length?Math.max(...db.customers.map(c=>c.id))+1:1;
+    db.customers.push({id,...data});
+    toast('✅ הלקוח נוסף');
+  }
+  save(); closeModal('customer-modal'); renderCustomers();
+}
+
+function deleteCustomer(id){
+  if(db.invoices.some(i=>i.customerId===id)){toast('לא ניתן למחוק — קיימות חשבוניות ללקוח זה');return;}
+  if(!confirm('למחוק את הלקוח?')) return;
+  db.customers=db.customers.filter(c=>c.id!==id);
+  save(); renderCustomers(); toast('הלקוח נמחק');
+}
+
+// ─── Items ───
+function renderItems(){
+  let its=[...db.items];
+  if(db.itemSearch){const q=db.itemSearch.toLowerCase();its=its.filter(i=>i.name.toLowerCase().includes(q)||i.desc?.toLowerCase().includes(q));}
+  if(!its.length){document.getElementById('items-table').innerHTML='<div class="empty"><div class="empty-icon">📦</div>אין פריטים</div>';return;}
+  document.getElementById('items-table').innerHTML=`<table><thead><tr>
+    <th>שם פריט</th><th>תיאור</th><th>מחיר</th><th>מע"מ</th><th>פעולות</th>
+  </tr></thead><tbody>${its.map(it=>`<tr>
+    <td><strong>${it.name}</strong></td>
+    <td style="color:var(--muted)">${it.desc||'—'}</td>
+    <td class="sum">₪${fmt(it.price)}</td>
+    <td>${it.vat}%</td>
+    <td><div class="actions">
+      <button class="btn btn-secondary btn-sm btn-icon" onclick="editItem(${it.id})">✏️</button>
+      <button class="btn btn-danger btn-sm btn-icon" onclick="deleteItem(${it.id})">🗑️</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+function openItemModal(id){
+  db.editItemId=id||null;
+  const it=id?db.items.find(x=>x.id===id):null;
+  document.getElementById('item-modal-title').textContent=it?'עריכת פריט':'פריט חדש';
+  document.getElementById('item-name').value=it?.name||'';
+  document.getElementById('item-price').value=it?.price||'';
+  document.getElementById('item-vat').value=it?.vat!=null?it.vat:18;
+  document.getElementById('item-desc').value=it?.desc||'';
+  document.getElementById('item-modal').style.display='flex';
+}
+function editItem(id){openItemModal(id);}
+
+function saveItem(){
+  const name=document.getElementById('item-name').value.trim();
+  if(!name){toast('יש להזין שם פריט');return;}
+  const data={name,price:parseFloat(document.getElementById('item-price').value)||0,vat:parseFloat(document.getElementById('item-vat').value)||0,desc:document.getElementById('item-desc').value};
+  if(db.editItemId){
+    const idx=db.items.findIndex(i=>i.id===db.editItemId);
+    db.items[idx]={...db.items[idx],...data};
+    toast('הפריט עודכן');
+  } else {
+    const id=db.items.length?Math.max(...db.items.map(i=>i.id))+1:1;
+    db.items.push({id,...data});
+    toast('✅ הפריט נוסף');
+  }
+  save(); closeModal('item-modal'); renderItems();
+}
+
+function deleteItem(id){
+  if(!confirm('למחוק את הפריט?')) return;
+  db.items=db.items.filter(i=>i.id!==id);
+  save(); renderItems(); toast('הפריט נמחק');
+}
+
+// ─── Init ───
+updateSidebar();
+renderInvoices();
+renderAlertBanner();
+
+// ─── Packages ───
+const PKG_CARRIERS = {
+  dhl:       { name:'DHL',         bg:'#FFCC00', color:'#1a1814', url: n=>`https://www.dhl.com/il-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}` },
+  fedex:     { name:'FedEx',       bg:'#4D148C', color:'#fff',    url: n=>`https://www.fedex.com/fedextrack/?trknbr=${n}` },
+  ups:       { name:'UPS',         bg:'#351C15', color:'#FFB500', url: n=>`https://www.ups.com/track?tracknum=${n}` },
+  'israel-post':{ name:'דואר ישראל', bg:'#003DA5', color:'#fff', url: n=>`https://mypost.israelpost.co.il/itemtrace/itemtrace?itemId=${n}` },
+  aramex:    { name:'Aramex',      bg:'#E31837', color:'#fff',    url: n=>`https://www.aramex.com/track/results?ShipmentNumber=${n}` },
+  tnt:       { name:'TNT',         bg:'#FF9900', color:'#fff',    url: n=>`https://www.tnt.com/express/he_il/site/shipping-tools/tracking.html?searchType=CON&cons=${n}` },
+  gls:       { name:'GLS',         bg:'#009FE3', color:'#fff',    url: n=>`https://gls-group.com/track-parcel?match=${n}` },
+  usps:      { name:'USPS',        bg:'#333366', color:'#fff',    url: n=>`https://tools.usps.com/go/TrackConfirmAction?tLabels=${n}` },
+  other:     { name:'אחר',         bg:'#8a8680', color:'#fff',    url: n=>`https://www.google.com/search?q=track+package+${n}` }
+};
+const PKG_STATUSES = {
+  transit:   { label:'בדרך',           bg:'#e0f2fe', color:'#0369a1' },
+  pending:   { label:'ממתין לשילוח',   bg:'#f1f5f9', color:'#475569' },
+  customs:   { label:'במכס',           bg:'#fef9c3', color:'#854d0e' },
+  delivered: { label:'נמסר',           bg:'#dcfce7', color:'#166534' },
+  delayed:   { label:'עיכוב',          bg:'#fee2e2', color:'#991b1b' }
+};
+
+if(!db.packages) db.packages=[];
+if(!db.pkgSearch) db.pkgSearch='';
+
+function renderPackages(){
+  if(!db.packages) db.packages=[];
+  let pkgs=[...db.packages];
+  if(db.pkgSearch){
+    const q=db.pkgSearch.toLowerCase();
+    pkgs=pkgs.filter(p=>(p.tracking||'').toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q)||((PKG_CARRIERS[p.carrier]||{}).name||'').toLowerCase().includes(q));
+  }
+  const el=document.getElementById('packages-table');
+  if(!el) return;
+  if(!pkgs.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">🚚</div>אין חבילות במעקב<br><span style="font-size:12px;color:var(--muted)">לחץ על "הוסף חבילה" להתחלה</span></div>';
+    return;
+  }
+  el.innerHTML=`<table><thead><tr>
+    <th>חברת שילוח</th><th>מספר מעקב</th><th>תיאור</th><th>סטטוס</th><th>משלוח משוער</th><th>הערות</th><th>פעולות</th>
+  </tr></thead><tbody>${pkgs.map(p=>{
+    const c=PKG_CARRIERS[p.carrier]||PKG_CARRIERS.other;
+    const s=PKG_STATUSES[p.status]||PKG_STATUSES.pending;
+    return`<tr>
+      <td><span style="background:${c.bg};color:${c.color};padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;">${c.name}</span></td>
+      <td><span style="font-family:monospace;font-size:12.5px;">${p.tracking||'—'}</span></td>
+      <td>${p.desc||'—'}</td>
+      <td><span class="badge" style="background:${s.bg};color:${s.color};">${s.label}</span></td>
+      <td>${p.eta||'—'}</td>
+      <td style="color:var(--muted);font-size:12px;">${p.notes||'—'}</td>
+      <td><div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="trackPackage(${p.id})">🔍 עקוב</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openPackageModal(${p.id})">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deletePackage(${p.id})">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function trackPackage(id){
+  const p=(db.packages||[]).find(x=>x.id===id); if(!p||!p.tracking){toast('אין מספר מעקב');return;}
+  const c=PKG_CARRIERS[p.carrier]||PKG_CARRIERS.other;
+  window.open(c.url(p.tracking),'_blank');
+}
+
+function openPackageModal(id){
+  db.editPkgId=id||null;
+  const p=id?(db.packages||[]).find(x=>x.id===id):null;
+  document.getElementById('pkg-modal-title').textContent=p?'עריכת חבילה':'הוסף חבילה';
+  document.getElementById('pkg-carrier').value=p?.carrier||'dhl';
+  document.getElementById('pkg-tracking').value=p?.tracking||'';
+  document.getElementById('pkg-desc').value=p?.desc||'';
+  document.getElementById('pkg-status').value=p?.status||'transit';
+  document.getElementById('pkg-eta').value=p?.eta||'';
+  document.getElementById('pkg-notes').value=p?.notes||'';
+  document.getElementById('package-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('pkg-tracking').focus(),100);
+}
+
+function savePackage(){
+  const tracking=document.getElementById('pkg-tracking').value.trim();
+  if(!tracking){toast('יש להזין מספר מעקב');return;}
+  if(!db.packages) db.packages=[];
+  const data={
+    carrier:document.getElementById('pkg-carrier').value,
+    tracking,
+    desc:document.getElementById('pkg-desc').value.trim(),
+    status:document.getElementById('pkg-status').value,
+    eta:document.getElementById('pkg-eta').value,
+    notes:document.getElementById('pkg-notes').value.trim()
+  };
+  if(db.editPkgId){
+    const idx=db.packages.findIndex(p=>p.id===db.editPkgId);
+    if(idx>=0) db.packages[idx]={...db.packages[idx],...data};
+    toast('החבילה עודכנה ✅');
+  } else {
+    const id=db.packages.length?Math.max(...db.packages.map(p=>p.id))+1:1;
+    db.packages.push({id,...data});
+    toast('✅ החבילה נוספה');
+  }
+  save(); closeModal('package-modal'); renderPackages();
+}
+
+function deletePackage(id){
+  if(!confirm('למחוק את החבילה?')) return;
+  db.packages=(db.packages||[]).filter(p=>p.id!==id);
+  save(); renderPackages(); toast('החבילה נמחקה');
+}
+
+initPWA();
+
+function initPWA(){
+  // צור אייקון SVG דינמי
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="100" fill="#2d5a3d"/>
+    <rect x="130" y="100" width="252" height="312" rx="18" fill="white" opacity="0.15"/>
+    <rect x="145" y="116" width="222" height="280" rx="12" fill="white"/>
+    <rect x="175" y="160" width="162" height="14" rx="7" fill="#2d5a3d" opacity="0.7"/>
+    <rect x="175" y="192" width="130" height="10" rx="5" fill="#2d5a3d" opacity="0.4"/>
+    <rect x="175" y="216" width="145" height="10" rx="5" fill="#2d5a3d" opacity="0.4"/>
+    <rect x="175" y="240" width="120" height="10" rx="5" fill="#2d5a3d" opacity="0.4"/>
+    <rect x="145" y="272" width="222" height="1" fill="#2d5a3d" opacity="0.15"/>
+    <rect x="245" y="288" width="100" height="12" rx="6" fill="#2d5a3d" opacity="0.5"/>
+    <rect x="245" y="308" width="78" height="18" rx="9" fill="#2d5a3d"/>
+    <text x="175" y="142" font-family="Arial" font-size="22" font-weight="bold" fill="#2d5a3d">חשבונית+</text>
+  </svg>`;
+
+  const svgBlob=new Blob([svg],{type:'image/svg+xml'});
+  const svgUrl=URL.createObjectURL(svgBlob);
+
+  // Apple touch icon
+  const appleIcon=document.getElementById('apple-icon');
+  if(appleIcon) appleIcon.href=svgUrl;
+
+  // PWA manifest
+  const manifest={
+    name:'חשבונית+ | מערכת ניהול עסקי',
+    short_name:'חשבונית+',
+    description:'מערכת ניהול חשבוניות, לקוחות ופריטים',
+    start_url:'.',
+    display:'standalone',
+    orientation:'portrait',
+    background_color:'#f7f6f3',
+    theme_color:'#2d5a3d',
+    lang:'he',
+    dir:'rtl',
+    icons:[
+      {src:svgUrl,sizes:'any',type:'image/svg+xml',purpose:'any maskable'}
+    ]
+  };
+  const manifestBlob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const manifestUrl=URL.createObjectURL(manifestBlob);
+  const manifestLink=document.getElementById('pwa-manifest');
+  if(manifestLink) manifestLink.href=manifestUrl;
+}
+</script>
+
+<script>
+// רישום Service Worker עבור התקנה כאפליקציית דפדפן (PWA)
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+// ודא שהדפדפן משתמש בקובץ Manifest חיצוני ולא ב-Blob דינמי
+window.addEventListener('load', () => {
+  const manifestLink = document.getElementById('pwa-manifest');
+  if (manifestLink) manifestLink.setAttribute('href', 'manifest.webmanifest');
+  const appleIcon = document.getElementById('apple-icon');
+  if (appleIcon) appleIcon.setAttribute('href', 'icons/icon-192.png');
+});
+</script>
+</body>
+</html>

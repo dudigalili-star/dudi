@@ -22,22 +22,36 @@
     --accent-light: #e8f2eb; --accent-mid: #4a8c62;
     --danger: #c0392b; --danger-light: #fdf2f1;
     --warning: #d4790a; --warning-light: #fef8f0;
+    --warning-border: #fbbf24; --warning-bg: #fffbeb;
+    --danger-border: #fca5a5; --danger-bg: #fff5f5;
+    --credit: #6b21a8; --credit-light: #f3e8ff; --credit-border: #d8b4fe;
     --radius: 10px;
   }
-  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; direction: rtl; min-height: 100vh; }
+  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; direction: rtl; min-height: 100vh; }
   .app { display: flex; height: 100vh; overflow: hidden; }
 
-  .sidebar { width: 210px; min-width: 210px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+  .sidebar { width: 210px; min-width: 210px; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: width 0.22s ease, min-width 0.22s ease; overflow: hidden; }
   .logo { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
   .logo-img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; background: var(--bg); border: 1px solid var(--border); display: none; }
   .logo-text { font-weight: 700; font-size: 17px; color: var(--accent); letter-spacing: -0.5px; }
-  .logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 1px; }
-  .nav { flex: 1; padding: 10px 0; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 18px; cursor: pointer; color: var(--muted); font-size: 13.5px; border-right: 3px solid transparent; transition: all 0.15s; user-select: none; }
+  .logo-text span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+  .nav { flex: 1; padding: 8px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; color: var(--muted); font-size: 13.5px; border-radius: 8px; transition: background 0.15s, color 0.15s; user-select: none; margin-bottom: 2px; }
   .nav-item:hover { background: var(--bg); color: var(--text); }
-  .nav-item.active { color: var(--accent); background: var(--accent-light); border-right-color: var(--accent); font-weight: 500; }
+  .nav-item.active { color: var(--accent); background: var(--accent-light); font-weight: 600; }
   .nav-icon { font-size: 16px; width: 22px; text-align: center; }
-  .sidebar-footer { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  .sidebar-footer { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+
+  /* Sidebar collapse */
+  .sidebar.collapsed { width: 52px; min-width: 52px; }
+  .sidebar.collapsed .logo-text,
+  .sidebar.collapsed .nav-item span:not(.nav-icon),
+  .sidebar.collapsed .sidebar-footer { display: none; }
+  .sidebar.collapsed .logo { padding: 14px 0; justify-content: center; }
+  .sidebar.collapsed .nav-item { padding: 12px 0; justify-content: center; }
+  .sidebar.collapsed .nav-icon { width: auto; font-size: 18px; }
+  .toggle-sidebar { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 1; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
+  .toggle-sidebar:hover { background: var(--bg); color: var(--text); }
 
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
@@ -46,24 +60,35 @@
   .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .header h1 { font-size: 18px; font-weight: 600; }
 
-  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Heebo', sans-serif; font-size: 13px; font-weight: 500; transition: background 0.15s, opacity 0.15s; }
   .btn-primary { background: var(--accent); color: white; }
   .btn-primary:hover { background: var(--accent-mid); }
   .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { background: #eee; }
+  .btn-secondary:hover { background: var(--border); }
   .btn-sm { padding: 5px 12px; font-size: 12px; }
   .btn-icon { padding: 5px 9px; font-size: 14px; line-height: 1; }
   .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #f5c6c3; }
   .btn-danger:hover { background: #fbe8e7; }
+  .btn:focus-visible, .nav-item:focus-visible, .filter-btn:focus-visible,
+  .modal-close:focus-visible, .toggle-sidebar:focus-visible, .cust-toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 
   .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-card--warning { border-color: var(--warning-border); background: var(--warning-bg); }
+  .stat-card--warning .stat-label { color: #92400e; }
+  .stat-card--warning .stat-val { color: #d97706; }
+  .stat-card--warning .stat-sub { color: #92400e; }
+  .stat-card--danger { border-color: var(--danger-border); background: var(--danger-bg); }
+  .stat-card--danger .stat-label { color: #991b1b; }
+  .stat-card--danger .stat-val { color: var(--danger); }
+  .stat-card--danger .stat-sub { color: #991b1b; }
   .stat-label { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
   .stat-val { font-size: 22px; font-weight: 600; }
   .stat-val.green { color: var(--accent); }
   .stat-val.red { color: var(--danger); }
+  .stat-sub { font-size: 11px; margin-top: 4px; color: var(--muted); }
 
   .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .table-head { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
@@ -75,20 +100,32 @@
   th { text-align: right; padding: 10px 16px; font-size: 12px; font-weight: 500; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--border); }
   td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafaf8; }
+  tr:hover td { background: var(--bg); }
 
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
   .badge-paid { background: var(--accent-light); color: var(--accent); }
   .badge-unpaid { background: var(--danger-light); color: var(--danger); }
   .badge-partial { background: var(--warning-light); color: var(--warning); }
-  .badge-credit { background: #f3e8ff; color: #6b21a8; }
+  .badge-credit { background: var(--credit-light); color: var(--credit); }
   .badge-voided { background: #f1f5f9; color: #64748b; }
+  .badge-draft { background: #f1f5f9; color: #475569; }
 
   .actions { display: flex; gap: 6px; align-items: center; }
   .sum { font-weight: 500; }
 
+  /* Actions overflow menu */
+  .actions-overflow { position: relative; }
+  .actions-dropdown { display: none; position: absolute; left: 0; top: calc(100% + 4px); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 50; min-width: 148px; padding: 4px 0; }
+  .actions-dropdown.open { display: block; }
+  .actions-dropdown button { display: flex; width: 100%; padding: 8px 14px; gap: 8px; align-items: center;
+    background: none; border: none; font-family: 'Heebo', sans-serif; font-size: 13px; cursor: pointer; color: var(--text);
+    text-align: right; white-space: nowrap; }
+  .actions-dropdown button:hover { background: var(--bg); }
+
   .filter-bar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .filter-btn { padding: 4px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-family: 'Heebo', sans-serif; font-size: 12px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+  .filter-btn { padding: 4px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); font-family: 'Heebo', sans-serif; font-size: 12px; cursor: pointer; color: var(--muted); transition: background 0.15s, color 0.15s, border-color 0.15s; }
   .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
   .empty { text-align: center; padding: 50px; color: var(--muted); font-size: 14px; }
@@ -101,7 +138,8 @@
   .modal-lg { width: 560px; }
   .modal-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--surface); z-index: 2; }
   .modal-header h2 { font-size: 16px; font-weight: 600; }
-  .modal-close { cursor: pointer; font-size: 22px; color: var(--muted); line-height: 1; background: none; border: none; font-family: inherit; }
+  .modal-close { cursor: pointer; font-size: 22px; color: var(--muted); line-height: 1; background: none; border: none; font-family: inherit; border-radius: 6px; padding: 2px 6px; transition: background 0.15s, color 0.15s; }
+  .modal-close:hover { background: var(--bg); color: var(--text); }
   .modal-body { padding: 20px 22px; }
   .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
 
@@ -141,7 +179,7 @@
   .settings-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 
   /* Logo upload */
-  .logo-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
+  .logo-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
   .logo-upload-area:hover { border-color: var(--accent); background: var(--accent-light); }
   .logo-upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
   .logo-preview { width: 100px; height: 70px; object-fit: contain; border-radius: 6px; margin: 0 auto 8px; display: block; }
@@ -150,23 +188,10 @@
 
   /* Customer inline toggle */
   .cust-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; margin-bottom: 12px; border: 1px solid var(--border); }
-  .cust-toggle-btn { flex: 1; padding: 6px 10px; border-radius: 6px; border: none; font-family: 'Heebo', sans-serif; font-size: 12.5px; cursor: pointer; background: transparent; color: var(--muted); font-weight: 400; transition: all 0.15s; }
+  .cust-toggle-btn { flex: 1; padding: 6px 10px; border-radius: 6px; border: none; font-family: 'Heebo', sans-serif; font-size: 12.5px; cursor: pointer; background: transparent; color: var(--muted); font-weight: 400; transition: background 0.15s, color 0.15s, box-shadow 0.15s; }
   .cust-toggle-btn.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-  .inline-tip { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
-
-  /* Sidebar collapse */
-  .sidebar { transition: width 0.22s ease, min-width 0.22s ease; overflow: hidden; }
-  .sidebar.collapsed { width: 52px; min-width: 52px; }
-  .sidebar.collapsed .logo-text,
-  .sidebar.collapsed .nav-item span:not(.nav-icon),
-  .sidebar.collapsed .sidebar-footer { display: none; }
-  .sidebar.collapsed .logo { padding: 14px 0; justify-content: center; }
-  .sidebar.collapsed .nav-item { padding: 12px 0; justify-content: center; }
-  .sidebar.collapsed .nav-item { border-right: none; border-right: 3px solid transparent; }
-  .sidebar.collapsed .nav-icon { width: auto; font-size: 18px; }
-  .toggle-sidebar { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 1; flex-shrink: 0; }
-  .toggle-sidebar:hover { background: var(--bg); color: var(--text); }
+  .inline-tip { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
   /* Preview modal */
   .preview-modal { width: 860px; max-width: 97vw; max-height: 94vh; }
@@ -201,21 +226,68 @@
   .timeline-month-header { padding: 10px 14px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .timeline-month-name { font-size: 13px; font-weight: 600; }
   .timeline-month-total { font-size: 13px; font-weight: 600; color: var(--accent); }
-  .timeline-inv { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .timeline-inv { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.12s; }
   .timeline-inv:last-child { border-bottom: none; }
   .timeline-inv:hover { background: var(--bg); }
   .timeline-inv-name { color: var(--muted); }
   .timeline-inv-amount { font-weight: 500; color: var(--text); }
   .timeline-empty { padding: 14px; text-align: center; color: var(--muted); font-size: 12px; }
-  .timeline-overdue { border-right: 3px solid var(--danger); }
-  .timeline-due-soon { border-right: 3px solid var(--warning); }
+  .timeline-overdue { background: var(--danger-light); }
+  .timeline-due-soon { background: var(--warning-light); }
 
   /* Drive sync button */
   .drive-btn { background: #1a73e8; color: white; border: none; border-radius: 8px; padding: 7px 14px; font-family: 'Heebo',sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.15s; }
   .drive-btn:hover { opacity: 0.88; }
   .drive-btn.restore { background: #34a853; }
 
+  /* Bottom nav (mobile only) */
+  .bottom-nav { display: none; }
+
   @media print { .app { display: none; } }
+
+  /* ── Mobile (iPhone) ── */
+  @media (max-width: 768px) {
+    .app { flex-direction: column; }
+    .sidebar { display: none; }
+
+    .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 200; }
+    .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 8px 4px; cursor: pointer; color: var(--muted); font-size: 10px; gap: 2px;
+      border: none; background: none; font-family: 'Heebo', sans-serif; min-height: 52px; }
+    .bottom-nav-item.active { color: var(--accent); }
+    .bottom-nav-icon { font-size: 21px; line-height: 1.2; }
+
+    .main { padding-bottom: 64px; }
+    .header { padding: 10px 16px; }
+    .header h1 { font-size: 16px; }
+    .content { padding: 12px 16px; }
+
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .col-hide-mobile { display: none; }
+
+    .modal { width: 100vw; max-width: 100vw; min-height: 100dvh; border-radius: 0; margin: 0; max-height: 100dvh; }
+    .modal-sm, .modal-lg { width: 100vw; }
+    .modal-footer { position: sticky; bottom: 0; background: var(--surface);
+      padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)); }
+
+    .btn { min-height: 44px; padding: 10px 18px; }
+    .btn-sm { min-height: 36px; }
+    .btn-icon { min-width: 40px; min-height: 40px; font-size: 15px; }
+
+    .filter-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 8px 12px; }
+    .filter-btn { flex-shrink: 0; min-height: 34px; }
+
+    .search-bar { flex: 1; }
+    .search-bar input { width: 100%; }
+
+    .timeline-grid { grid-template-columns: 1fr; }
+    .settings-grid { grid-template-columns: 1fr; max-width: 100%; }
+
+    .table-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .table-head .search-bar { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -228,17 +300,36 @@
       <div class="logo-text" id="sidebar-name">חשבונית+<span id="sidebar-tagline">מערכת ניהול עסקי</span></div>
       <button class="toggle-sidebar" onclick="toggleSidebar()" title="הסתר/הצג תפריט">☰</button>
     </div>
-    <nav class="nav">
-      <div class="nav-item active" onclick="showPage('invoices')" id="nav-invoices"><span class="nav-icon">🧾</span> <span>חשבוניות</span></div>
-      <div class="nav-item" onclick="showPage('timeline')" id="nav-timeline"><span class="nav-icon">📅</span> <span>לוח גבייה</span></div>
-      <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span> <span>הצעות מחיר</span></div>
-      <div class="nav-item" onclick="showPage('customers')" id="nav-customers"><span class="nav-icon">👥</span> <span>לקוחות</span></div>
-      <div class="nav-item" onclick="showPage('items')" id="nav-items"><span class="nav-icon">📦</span> <span>פריטים</span></div>
-      <div class="nav-item" onclick="showPage('packages')" id="nav-packages"><span class="nav-icon">🚚</span> <span>מעקב חבילות</span></div>
-      <div class="nav-item" onclick="showPage('settings')" id="nav-settings"><span class="nav-icon">⚙️</span> <span>הגדרות</span></div>
+    <nav class="nav" role="navigation" aria-label="ניווט ראשי">
+      <div class="nav-item active" onclick="showPage('invoices')" id="nav-invoices" role="button" tabindex="0" aria-current="page"><span class="nav-icon">🧾</span> <span>חשבוניות</span></div>
+      <div class="nav-item" onclick="showPage('timeline')" id="nav-timeline" role="button" tabindex="0"><span class="nav-icon">📅</span> <span>לוח גבייה</span></div>
+      <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes" role="button" tabindex="0"><span class="nav-icon">📋</span> <span>הצעות מחיר</span></div>
+      <div class="nav-item" onclick="showPage('customers')" id="nav-customers" role="button" tabindex="0"><span class="nav-icon">👥</span> <span>לקוחות</span></div>
+      <div class="nav-item" onclick="showPage('items')" id="nav-items" role="button" tabindex="0"><span class="nav-icon">📦</span> <span>פריטים</span></div>
+      <div class="nav-item" onclick="showPage('packages')" id="nav-packages" role="button" tabindex="0"><span class="nav-icon">🚚</span> <span>מעקב חבילות</span></div>
+      <div class="nav-item" onclick="showPage('settings')" id="nav-settings" role="button" tabindex="0"><span class="nav-icon">⚙️</span> <span>הגדרות</span></div>
     </nav>
     <div class="sidebar-footer">נתונים נשמרים בדפדפן</div>
   </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav" id="bottom-nav" aria-label="ניווט תחתון">
+    <button class="bottom-nav-item active" onclick="showPage('invoices')" id="bnav-invoices" aria-current="page">
+      <span class="bottom-nav-icon">🧾</span><span>חשבוניות</span>
+    </button>
+    <button class="bottom-nav-item" onclick="showPage('timeline')" id="bnav-timeline">
+      <span class="bottom-nav-icon">📅</span><span>גבייה</span>
+    </button>
+    <button class="bottom-nav-item" onclick="showPage('quotes')" id="bnav-quotes">
+      <span class="bottom-nav-icon">📋</span><span>הצעות</span>
+    </button>
+    <button class="bottom-nav-item" onclick="showPage('customers')" id="bnav-customers">
+      <span class="bottom-nav-icon">👥</span><span>לקוחות</span>
+    </button>
+    <button class="bottom-nav-item" onclick="showPage('settings')" id="bnav-settings">
+      <span class="bottom-nav-icon">⚙️</span><span>עוד</span>
+    </button>
+  </nav>
 
   <!-- Main -->
   <div class="main">
@@ -454,11 +545,11 @@
 
 <!-- Invoice Modal -->
 <div id="invoice-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('invoice-modal')">
+  <div class="modal-overlay" onclick="closeModal('invoice-modal')" role="dialog" aria-modal="true" aria-labelledby="inv-modal-title">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="inv-modal-title">חשבונית חדשה</h2>
-        <button class="modal-close" onclick="closeModal('invoice-modal')">×</button>
+        <button class="modal-close" onclick="closeModal('invoice-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
 
@@ -597,11 +688,11 @@
 
 <!-- Quote Modal -->
 <div id="quote-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('quote-modal')">
+  <div class="modal-overlay" onclick="closeModal('quote-modal')" role="dialog" aria-modal="true" aria-labelledby="quote-modal-title">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="quote-modal-title">הצעת מחיר חדשה</h2>
-        <button class="modal-close" onclick="closeModal('quote-modal')">×</button>
+        <button class="modal-close" onclick="closeModal('quote-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
         <div class="section-title" style="margin-top:0">לקוח</div>
@@ -681,11 +772,11 @@
 
 <!-- Credit Note Modal -->
 <div id="credit-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('credit-modal')">
+  <div class="modal-overlay" onclick="closeModal('credit-modal')" role="dialog" aria-modal="true" aria-labelledby="credit-modal-title">
     <div class="modal modal-sm" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h2>הנפקת חשבונית זיכוי</h2>
-        <button class="modal-close" onclick="closeModal('credit-modal')">×</button>
+        <h2 id="credit-modal-title">הנפקת חשבונית זיכוי</h2>
+        <button class="modal-close" onclick="closeModal('credit-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
         <div style="background:#f3e8ff;border:1px solid #d8b4fe;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
@@ -734,11 +825,11 @@
 
 <!-- Customer Modal -->
 <div id="customer-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('customer-modal')">
+  <div class="modal-overlay" onclick="closeModal('customer-modal')" role="dialog" aria-modal="true" aria-labelledby="cust-modal-title">
     <div class="modal modal-sm" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="cust-modal-title">לקוח חדש</h2>
-        <button class="modal-close" onclick="closeModal('customer-modal')">×</button>
+        <button class="modal-close" onclick="closeModal('customer-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
         <div class="form-row single"><div class="form-group"><label>שם לקוח / חברה *</label><input type="text" id="cust-name" placeholder="ישראל ישראלי"></div></div>
@@ -762,11 +853,11 @@
 
 <!-- Item Modal -->
 <div id="item-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('item-modal')">
+  <div class="modal-overlay" onclick="closeModal('item-modal')" role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
     <div class="modal modal-sm" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="item-modal-title">פריט חדש</h2>
-        <button class="modal-close" onclick="closeModal('item-modal')">×</button>
+        <button class="modal-close" onclick="closeModal('item-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
         <div class="form-row single"><div class="form-group"><label>שם הפריט *</label><input type="text" id="item-name" placeholder="שם המוצר / שירות"></div></div>
@@ -787,11 +878,11 @@
 <!-- WhatsApp Modal -->
 <!-- Package Modal -->
 <div id="package-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('package-modal')">
+  <div class="modal-overlay" onclick="closeModal('package-modal')" role="dialog" aria-modal="true" aria-labelledby="pkg-modal-title">
     <div class="modal modal-sm" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="pkg-modal-title">הוסף חבילה</h2>
-        <button class="modal-close" onclick="closeModal('package-modal')">×</button>
+        <button class="modal-close" onclick="closeModal('package-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
@@ -852,11 +943,11 @@
 </div>
 
 <div id="wa-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('wa-modal')">
+  <div class="modal-overlay" onclick="closeModal('wa-modal')" role="dialog" aria-modal="true" aria-labelledby="wa-modal-title">
     <div class="modal modal-sm" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h2>שליחה בווצאפ</h2>
-        <button class="modal-close" onclick="closeModal('wa-modal')">×</button>
+        <h2 id="wa-modal-title">שליחה בווצאפ</h2>
+        <button class="modal-close" onclick="closeModal('wa-modal')" aria-label="סגור">×</button>
       </div>
       <div class="modal-body">
 
@@ -907,13 +998,13 @@
 
 <!-- Preview Modal -->
 <div id="preview-modal" style="display:none">
-  <div class="modal-overlay" onclick="closeModal('preview-modal')">
+  <div class="modal-overlay" onclick="closeModal('preview-modal')" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title">
     <div class="modal preview-modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h2 id="preview-modal-title">תצוגה מקדימה</h2>
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="btn btn-secondary btn-sm" onclick="doPrintFromPreview()">🖨️ הדפס / PDF</button>
-          <button class="modal-close" onclick="closeModal('preview-modal')">×</button>
+          <button class="modal-close" onclick="closeModal('preview-modal')" aria-label="סגור">×</button>
         </div>
       </div>
       <iframe id="preview-iframe" class="preview-frame" style="height:75vh;"></iframe>
@@ -1151,7 +1242,15 @@ function recalcDueDate(){
 function showPage(p){
   ['invoices','timeline','quotes','customers','items','packages','settings'].forEach(pg=>{
     document.getElementById('page-'+pg).classList.toggle('active',pg===p);
-    document.getElementById('nav-'+pg).classList.toggle('active',pg===p);
+    const navEl=document.getElementById('nav-'+pg);
+    navEl.classList.toggle('active',pg===p);
+    navEl.toggleAttribute('aria-current',pg===p);
+  });
+  // sync bottom nav (mobile)
+  const bnavMap={invoices:'invoices',timeline:'timeline',quotes:'quotes',customers:'customers',settings:'settings'};
+  ['invoices','timeline','quotes','customers','settings'].forEach(pg=>{
+    const btn=document.getElementById('bnav-'+pg);
+    if(btn){btn.classList.toggle('active',pg===p);btn.toggleAttribute('aria-current',pg===p);}
   });
   if(p==='invoices') renderInvoices();
   if(p==='timeline') renderTimeline();
@@ -1270,8 +1369,8 @@ function renderStats(){
     <div class="stat-card"><div class="stat-label">סה"כ חשבוניות</div><div class="stat-val">${invs.length}</div></div>
     <div class="stat-card"><div class="stat-label">שולם</div><div class="stat-val green">₪${fmt(paid)}</div></div>
     <div class="stat-card"><div class="stat-label">ממתין לתשלום</div><div class="stat-val red">₪${fmt(unpaid)}</div></div>
-    <div class="stat-card" style="border-color:#fbbf24;background:#fffbeb"><div class="stat-label" style="color:#92400e">לגבייה החודש</div><div class="stat-val" style="color:#d97706">₪${fmt(dueThisMonth)}</div>${dueThisMonth===0?'<div style="font-size:11px;color:#92400e;margin-top:4px">אין גבייה השנה</div>':'<div style="font-size:11px;color:#92400e;margin-top:4px">תאריך פירעון: חודש זה</div>'}</div>
-    <div class="stat-card" style="border-color:#fca5a5;background:#fff5f5"><div class="stat-label" style="color:#991b1b">באיחור</div><div class="stat-val" style="color:#dc2626">₪${fmt(overdue)}</div>${overdue===0?'<div style="font-size:11px;color:#991b1b;margin-top:4px">הכל תקין ✓</div>':'<div style="font-size:11px;color:#991b1b;margin-top:4px">עבר מועד התשלום</div>'}</div>
+    <div class="stat-card stat-card--warning"><div class="stat-label">לגבייה החודש</div><div class="stat-val">₪${fmt(dueThisMonth)}</div><div class="stat-sub">${dueThisMonth===0?'אין גבייה החודש':'תאריך פירעון: חודש זה'}</div></div>
+    <div class="stat-card stat-card--danger"><div class="stat-label">באיחור</div><div class="stat-val">₪${fmt(overdue)}</div><div class="stat-sub">${overdue===0?'הכל תקין ✓':'עבר מועד התשלום'}</div></div>
   `;
 }
 
@@ -1326,13 +1425,18 @@ function renderInvoices(){
       <td>${allocCell}</td>
       <td><span class="badge ${statusClass(inv.status)}">${statusLabel(inv.status)}</span></td>
       <td><div class="actions">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${inv.id})" title="עריכה">✏️</button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="previewInvoiceById(${inv.id})" title="תצוגה מקדימה">👁️</button>
-        <button class="wa-btn wa-btn-sm" onclick="quickSendWA(${inv.id})" title="שלח ווצאפ מהיר">${waIcon}</button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="openWAModal(${inv.id})" title="ווצאפ + קישור" style="font-size:11px;padding:4px 7px;">📎WA</button>
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="printInvoiceById(${inv.id})" title="הורד PDF">🖨️</button>
-        ${!isCredit&&!hasCredit?`<button class="btn btn-sm" style="background:#f3e8ff;color:#6b21a8;border:1px solid #d8b4fe;font-size:11px;padding:4px 8px;" onclick="createCreditNote(${inv.id})" title="צור חשבונית זיכוי">זכה</button>`:''}
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvoice(${inv.id})" title="מחק">🗑️</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${inv.id})" title="עריכה" aria-label="ערוך חשבונית ${inv.number}">✏️</button>
+        <button class="wa-btn wa-btn-sm" onclick="quickSendWA(${inv.id})" title="שלח ווצאפ מהיר" aria-label="שלח ווצאפ">${waIcon}</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteInvoice(${inv.id})" title="מחק" aria-label="מחק חשבונית ${inv.number}">🗑️</button>
+        <div class="actions-overflow">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="toggleActionsMenu(this)" title="פעולות נוספות" aria-label="פעולות נוספות" aria-haspopup="true">⋯</button>
+          <div class="actions-dropdown">
+            <button onclick="previewInvoiceById(${inv.id});closeActionsMenus()">👁️ תצוגה מקדימה</button>
+            <button onclick="printInvoiceById(${inv.id});closeActionsMenus()">🖨️ הורד PDF</button>
+            <button onclick="openWAModal(${inv.id});closeActionsMenus()">📄 שלח עם קובץ</button>
+            ${!isCredit&&!hasCredit?`<button onclick="createCreditNote(${inv.id});closeActionsMenus()">💳 צור זיכוי</button>`:''}
+          </div>
+        </div>
       </div></td>
     </tr>`;
   }).join('')}</tbody></table>`;
@@ -1577,8 +1681,20 @@ function saveInvoice(){
   save(); closeModal('invoice-modal'); renderInvoices();
 }
 
+function toggleActionsMenu(btn){
+  closeActionsMenus();
+  const dd=btn.nextElementSibling;
+  if(dd) dd.classList.toggle('open');
+}
+function closeActionsMenus(){
+  document.querySelectorAll('.actions-dropdown.open').forEach(d=>d.classList.remove('open'));
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.actions-overflow')) closeActionsMenus();});
+
 function deleteInvoice(id){
-  if(!confirm('למחוק את החשבונית לצמיתות?')) return;
+  const inv=db.invoices.find(i=>i.id===id);
+  const label=inv?`חשבונית ${inv.number}${inv.custData?.name||getCustomer(inv.customerId)?.name?' — '+(inv.custData?.name||getCustomer(inv.customerId)?.name):''}`:' ';
+  if(!confirm(`למחוק ${label} לצמיתות?`)) return;
   db.invoices=db.invoices.filter(i=>i.id!==id);
   save(); renderInvoices(); toast('החשבונית נמחקה');
 }
@@ -1942,7 +2058,7 @@ function buildQuoteHTML(q){
     .tr{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
     .tf{font-weight:700;font-size:16px;border-top:2px solid #1e40af;padding-top:10px;margin-top:4px;color:#1e40af}
     .footer-note{margin-top:22px;padding:12px;background:#f7f6f3;border-radius:8px;font-size:12px;color:#8a8680}
-    .valid-note{margin-bottom:18px;font-size:13px;color:#555;background:#eff6ff;padding:10px 14px;border-radius:8px;border-right:3px solid #1e40af}
+    .valid-note{margin-bottom:18px;font-size:13px;color:#1e40af;background:#eff6ff;padding:10px 14px;border-radius:8px;border:1px solid #bfdbfe}
     @media print{body{padding:20px}}
   </style></head><body>
   <div class="top">
@@ -2320,15 +2436,18 @@ function buildCreditHTML(inv){
 }
 
 // ─── Alert Banner ───
-let alertDismissed = false;
-
+function isAlertDismissed(){
+  const ts=localStorage.getItem('alertDismissedTs');
+  if(!ts) return false;
+  return Date.now()-parseInt(ts)<86400000;
+}
 function dismissAlert(){
-  alertDismissed = true;
+  localStorage.setItem('alertDismissedTs',Date.now());
   document.getElementById('alert-banner').className='alert-banner hidden';
 }
 
 function renderAlertBanner(){
-  if(alertDismissed) return;
+  if(isAlertDismissed()) return;
   const banner=document.getElementById('alert-banner');
   const todayStr=today();
   const sevenDays=addDays(todayStr,7);
@@ -2459,7 +2578,7 @@ function restoreFromDrive(){
         db.settings={...parsed.settings,logoData:logo};
         save(); updateSidebar(); renderInvoices(); renderAlertBanner();
         toast('✅ הנתונים שוחזרו בהצלחה');
-      }catch(err){toast('❌ שגיאה בקריאת הקובץ');}
+      }catch(err){alert('שגיאה בקריאת הגיבוי.\nוודא שהקובץ הוא JSON תקין שיוצא מהאפליקציה.\nהנתונים לא השתנו.');}
     };
     reader.readAsText(file);
   };

@@ -1,0 +1,22 @@
+{
+  "name": "parts-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram bot: photo / sketch / text of a part → drawing (PDF, STEP, DXF) and quotation email",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/bot.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.124.0",
+    "@resvg/resvg-js": "2.6.2",
+    "grammy": "1.46.0",
+    "jspdf": "3.0.1",
+    "jszip": "3.10.1"
+  }
+}

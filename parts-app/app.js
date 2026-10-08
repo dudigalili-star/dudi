@@ -1,13 +1,13 @@
-import { jsPDF, JSZip, Anthropic } from '../vendor/libs.js';
+import { jsPDF, JSZip, Anthropic } from './vendor/libs.js';
 import {
   KINDS, PLATE_SHAPES, MATERIALS, FINISHES, newPart, normalizePart, warnings, wantsFullSet,
   canMake3D, isComplex, displayName, fileBase, overallLength, fmt,
-} from './model.js';
-import { buildDrawing, buildViews11, scaleLabel } from './drawing.js';
-import { toSVG, toPDF, toDXF } from './render.js';
-import { makeSTEP } from './cad.js';
-import { analyzeImages, fileToImage, DEFAULT_MODEL } from './ai.js';
-import { emailSubject, emailBody, attachmentList, gmailComposeUrl } from './email.js';
+} from './core/model.js';
+import { buildDrawing, buildViews11, scaleLabel } from './core/drawing.js';
+import { toSVG, toPDF, toDXF } from './core/render.js';
+import { makeSTEP } from './core/cad.js';
+import { analyzeImages, fileToImage, DEFAULT_MODEL } from './core/ai.js';
+import { emailSubject, emailBody, attachmentList, gmailComposeUrl } from './core/email.js';
 
 /* ───────────── storage ───────────── */
 
@@ -308,13 +308,18 @@ function renderEditor() {
       <label class="f" style="margin-top:12px">מידע נוסף ל-AI (לא חובה) — מידות ידועות, כמות, חומר, הערות
         <textarea id="ai-text" rows="2" placeholder="למשל: אורך 258, קוטר 20, 10 יחידות, ST37, חור 5 במרחק 7 מכל צד"></textarea></label>
       <div class="row" style="margin-top:10px">
-        <button class="btn primary" id="btn-ai" ${imgs.length ? '' : 'disabled'}>✨ נתח עם AI</button>
-        <span class="muted">${settings.apiKey ? '' : 'צריך מפתח API בהגדרות. אפשר גם למלא ידנית למטה.'}</span>
+        <button class="btn primary" id="btn-ai">✨ נתח עם AI</button>
+        <span class="muted">${settings.apiKey ? 'אפשר גם בלי תמונה — רק תיאור בטקסט' : 'צריך מפתח API בהגדרות. אפשר גם למלא ידנית למטה.'}</span>
       </div>
     </div>
 
     <div class="card">
       <h2><span class="step">2</span> פרטי החלק</h2>
+      <div class="row" style="margin-bottom:12px">
+        <label class="f" style="flex:1;min-width:220px">תיקון בשפה חופשית (AI)
+          <input id="ai-fix" placeholder="למשל: האורך 260, החומר 1045, להוסיף חור 6 במרחק 30 מהקצה"></label>
+        <button class="btn" id="btn-ai-fix">עדכן</button>
+      </div>
       ${n.questions.length ? `<div class="alert warn"><b>שאלות פתוחות מה-AI — כדאי לבדוק לפני שליחה:</b><ul>${n.questions.map((q) => `<li>${esc(q)}</li>`).join('')}</ul>
         <button class="btn small" id="btn-clear-q" style="margin-top:6px">✓ בדקתי, הסר</button></div>` : ''}
       ${n.estimated.length ? `<div class="alert warn"><b>מידות שהוערכו מהתמונה (לא נכתבו בה):</b><ul>${n.estimated.map((q) => `<li>${esc(q)}</li>`).join('')}</ul>
@@ -470,7 +475,9 @@ function bindEditor() {
     };
   });
 
-  $('#btn-ai').onclick = runAI;
+  $('#btn-ai').onclick = () => runAI();
+  $('#btn-ai-fix').onclick = () => runAI({ fix: true });
+  $('#ai-fix').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAI({ fix: true }); });
   const cq = $('#btn-clear-q');
   if (cq) cq.onclick = () => { p.questions = []; saveParts(); renderEditor(); };
   const ce = $('#btn-clear-e');
@@ -519,32 +526,41 @@ async function addImages(fileList) {
   renderEditor();
 }
 
-async function runAI() {
+async function runAI({ fix = false } = {}) {
   const p = cur();
   if (!settings.apiKey) {
     openSettings();
     return;
   }
   const imgs = p.imageIds.map(loadImage).filter(Boolean);
-  if (!imgs.length) return;
-  const btn = $('#btn-ai');
+  const userText = (fix ? $('#ai-fix') : $('#ai-text')).value.trim();
+  if (fix && !userText) return;
+  if (!fix && !imgs.length && !userText) {
+    toast('הוסף תמונה או כתוב תיאור של החלק', 'warn');
+    return;
+  }
+  const btn = $(fix ? '#btn-ai-fix' : '#btn-ai');
   btn.disabled = true;
-  toast('<span class="spinner"></span> מנתח את התמונה… (בדרך כלל 20–60 שניות)', 'warn');
+  toast(`<span class="spinner"></span> ${fix ? 'מעדכן את החלק…' : 'מנתח… (בדרך כלל 20–60 שניות)'}`, 'warn');
   try {
-    const res = await analyzeImages({ Anthropic, apiKey: settings.apiKey, model: settings.model || DEFAULT_MODEL, images: imgs, userText: $('#ai-text').value.trim() });
-    const keep = { id: p.id, imageIds: p.imageIds, createdAt: p.createdAt, fullSet: null };
+    const res = await analyzeImages({
+      Anthropic, apiKey: settings.apiKey, model: settings.model || DEFAULT_MODEL,
+      images: fix ? [] : imgs, userText, current: fix ? norm(p) : null,
+    });
+    const keep = { id: p.id, imageIds: p.imageIds, createdAt: p.createdAt, fullSet: fix ? p.fullSet : null };
     // values the user already typed win over AI guesses
     if (p.quantity && !res.quantity) keep.quantity = p.quantity;
     Object.assign(p, res, keep);
     saveParts();
     renderEditor();
-    toast('הניתוח הושלם — עבור על המידות והשאלות לפני שליחה.');
+    toast(fix ? 'החלק עודכן.' : 'הניתוח הושלם — עבור על המידות והשאלות לפני שליחה.');
   } catch (e) {
     console.error(e);
     const msg = e?.status === 401 ? 'מפתח ה-API לא תקין' : (e?.message || String(e));
-    toast(`הניתוח נכשל: ${esc(msg)}`, 'err');
+    toast(`הפעולה נכשלה: ${esc(msg)}`, 'err');
   } finally {
     if ($('#btn-ai')) $('#btn-ai').disabled = false;
+    if ($('#btn-ai-fix')) $('#btn-ai-fix').disabled = false;
   }
 }
 
@@ -609,3 +625,42 @@ $('#plist').addEventListener('click', (e) => {
 if (!cur()) selId = parts[0]?.id || null;
 renderList();
 renderEditor();
+
+/* ───────────── installable app ───────────── */
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch((e) => console.warn('service worker', e));
+}
+
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvent = e;
+  $('#btn-install').hidden = false;
+});
+$('#btn-install').onclick = async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  await installEvent.userChoice;
+  installEvent = null;
+  $('#btn-install').hidden = true;
+};
+
+// Photos shared to the app from the phone's share sheet (see sw.js) become a new part.
+async function takeSharedImages() {
+  if (!new URLSearchParams(location.search).has('shared') || !('caches' in window)) return;
+  history.replaceState(null, '', location.pathname);
+  const cache = await caches.open('parts-app-share');
+  const keys = await cache.keys();
+  const files = [];
+  for (const k of keys) {
+    const res = await cache.match(k);
+    const blob = await res.blob();
+    files.push(new File([blob], 'shared.jpg', { type: blob.type || 'image/jpeg' }));
+    await cache.delete(k);
+  }
+  if (!files.length) return;
+  addPart();
+  await addImages(files);
+}
+takeSharedImages().catch((e) => console.warn('share', e));

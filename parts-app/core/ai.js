@@ -127,19 +127,29 @@ Other fields:
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
-export async function analyzeImages({ Anthropic, apiKey, model = DEFAULT_MODEL, images, userText }) {
-  if (!apiKey) throw new Error('חסר מפתח API של Anthropic (בהגדרות)');
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+// images: [{base64, mediaType}] (may be empty when the part is described in text only).
+// current: an existing part spec to revise with userText (corrections like "length 260").
+export async function analyzeImages({ Anthropic, apiKey, model = DEFAULT_MODEL, images = [], userText = '', current = null, client = null }) {
+  if (!client && !apiKey) throw new Error('חסר מפתח API של Anthropic (בהגדרות)');
+  if (!images.length && !userText && !current) throw new Error('אין תמונה או תיאור לניתוח');
+  const api = client || new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
   const content = [];
   images.forEach((img) => {
     content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } });
   });
-  content.push({
-    type: 'text',
-    text: (userText ? `Additional information from me (overrides the image):\n${userText}\n\n` : '') + 'Produce the part specification.',
-  });
+  let text;
+  if (current) {
+    const { id, imageIds, createdAt, fullSet, ...spec } = current;
+    text = `This is the current specification of the part:\n${JSON.stringify(spec)}\n\n`
+      + `Apply my corrections below and return the complete updated specification. Keep everything I did not mention unchanged. `
+      + `Remove questions and estimates that my corrections answer.\n\nCorrections:\n${userText}`;
+  } else {
+    text = (userText ? `Additional information from me (overrides the image):\n${userText}\n\n` : '')
+      + (images.length ? 'Produce the part specification.' : 'There is no image; produce the part specification from my description.');
+  }
+  content.push({ type: 'text', text });
 
-  const response = await client.beta.messages.create({
+  const response = await api.beta.messages.create({
     model,
     max_tokens: 16000,
     betas: ['server-side-fallback-2026-07-01'],
@@ -153,10 +163,10 @@ export async function analyzeImages({ Anthropic, apiKey, model = DEFAULT_MODEL, 
     throw new Error('הבקשה נדחתה על ידי המודל' + (response.stop_details?.explanation ? `: ${response.stop_details.explanation}` : ''));
   }
   if (response.stop_reason === 'max_tokens') throw new Error('התשובה נקטעה (max_tokens) — נסה שוב');
-  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  const out = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
   let data;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(out);
   } catch {
     throw new Error('לא התקבל JSON תקין מהמודל');
   }

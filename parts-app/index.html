@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#2d5a3d">
-<title>שרטוטים לספק | חשבונית+</title>
+<title>שרטוטים לספק</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="שרטוטים">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -101,8 +107,9 @@
 </head>
 <body>
 <header>
-  <a class="back" href="index.html">→ חשבונית+</a>
-  <h1>📐 שרטוטים לספק<small>מתמונה או סקיצה ← שרטוט PDF / STEP / DXF ← מייל להצעת מחיר</small></h1>
+  <img src="icons/icon-192.png" alt="" width="30" height="30" style="border-radius:7px">
+  <h1>שרטוטים לספק<small>מתמונה או סקיצה ← שרטוט PDF / STEP / DXF ← מייל להצעת מחיר</small></h1>
+  <button class="btn" id="btn-install" hidden>📲 התקנה</button>
   <button class="btn" id="btn-settings">⚙️ הגדרות</button>
 </header>
 
@@ -139,6 +146,6 @@
   </div>
 </dialog>
 
-<script type="module" src="drawings/app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

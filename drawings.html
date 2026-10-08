@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2d5a3d">
+<title>שרטוטים לספק | חשבונית+</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --border: #e8e5de;
+    --text: #1a1814; --muted: #8a8680; --accent: #2d5a3d;
+    --accent-light: #e8f2eb; --accent-mid: #4a8c62;
+    --danger: #c0392b; --danger-light: #fdf2f1;
+    --warning: #d4790a; --warning-bg: #fffbeb; --warning-border: #fbbf24;
+    --radius: 10px;
+  }
+  body { font-family: 'Heebo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  a { color: var(--accent); }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 20; }
+  header h1 { font-size: 17px; font-weight: 700; flex: 1; }
+  header h1 small { font-weight: 400; color: var(--muted); font-size: 13px; margin-inline-start: 8px; }
+  .back { text-decoration: none; color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .back:hover { color: var(--accent); }
+  .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 18px; padding: 18px 20px 40px; max-width: 1500px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .step { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .btn { font-family: inherit; font-size: 13.5px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 7px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--accent-mid); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-mid); }
+  .btn.small { padding: 3px 9px; font-size: 12.5px; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn.ghost:hover { color: var(--danger); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent-mid); outline-offset: 1px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; }
+  label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+  input, select, textarea { font-family: inherit; font-size: 14px; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; background: #fff; width: 100%; }
+  input.ltr, textarea.ltr, .ltr { direction: ltr; text-align: left; }
+  textarea { resize: vertical; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+  table.t th { text-align: right; font-weight: 500; color: var(--muted); font-size: 12px; padding: 4px; border-bottom: 1px solid var(--border); }
+  table.t td { padding: 3px 4px; border-bottom: 1px solid #f1efea; }
+  table.t td input { padding: 4px 6px; min-width: 60px; }
+  table.t td.idx { color: var(--muted); width: 22px; }
+  .sub { font-weight: 600; font-size: 13.5px; margin: 14px 0 6px; }
+  /* parts list */
+  .plist { list-style: none; }
+  .plist li { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 7px; cursor: pointer; display: flex; gap: 8px; align-items: center; background: #fff; }
+  .plist li:hover { border-color: var(--accent-mid); }
+  .plist li.sel { border-color: var(--accent); background: var(--accent-light); }
+  .plist .nm { font-weight: 600; direction: ltr; text-align: right; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plist .meta { font-size: 11.5px; color: var(--muted); }
+  .plist .thumb { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; background: var(--bg); flex: none; }
+  .badge { font-size: 11px; border-radius: 10px; padding: 1px 7px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+  .badge.full { background: #e7eefc; color: #2b4f9e; }
+  .badge.warn { background: var(--warning-bg); color: var(--warning); }
+  /* upload */
+  .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 18px; text-align: center; cursor: pointer; color: var(--muted); }
+  .drop.over { border-color: var(--accent); background: var(--accent-light); }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .thumbs .th { position: relative; }
+  .thumbs img { width: 92px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  .thumbs .x { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 20px; }
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 10px; }
+  .alert.warn { background: var(--warning-bg); border: 1px solid var(--warning-border); }
+  .alert.err { background: var(--danger-light); border: 1px solid #f5b7b1; color: var(--danger); }
+  .alert.ok { background: var(--accent-light); border: 1px solid #b7d9c2; }
+  .alert ul { padding-inline-start: 18px; }
+  .alert b { display: block; margin-bottom: 3px; }
+  .preview { border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: auto; }
+  .preview svg { display: block; width: 100%; height: auto; }
+  .status { font-size: 13px; color: var(--muted); min-height: 20px; margin-top: 8px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--accent-light); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .mail textarea { min-height: 220px; font-family: inherit; }
+  .files { direction: ltr; text-align: left; font-size: 12.5px; color: var(--muted); }
+  dialog { border: 1px solid var(--border); border-radius: 12px; padding: 20px; width: min(520px, 94vw); margin: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog h3 { margin-bottom: 12px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+  .toggle input { width: auto; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); padding: 12px 12px 40px; }
+    aside { display: contents; }
+    aside > .card:first-child { order: 0; }
+    main { order: 1; min-width: 0; }
+    #mail-card { order: 2; }
+    header { padding: 10px 12px; }
+    header h1 small { display: none; }
+    table.t { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="index.html">→ חשבונית+</a>
+  <h1>📐 שרטוטים לספק<small>מתמונה או סקיצה ← שרטוט PDF / STEP / DXF ← מייל להצעת מחיר</small></h1>
+  <button class="btn" id="btn-settings">⚙️ הגדרות</button>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="card">
+      <h2>חלקים בבקשה</h2>
+      <ul class="plist" id="plist"></ul>
+      <div class="row">
+        <button class="btn primary" id="btn-add">+ חלק חדש</button>
+        <button class="btn ghost" id="btn-clear" title="ניקוי כל החלקים">בקשה חדשה</button>
+      </div>
+    </div>
+    <div class="card mail" id="mail-card"></div>
+  </aside>
+  <main id="editor"></main>
+</div>
+
+<dialog id="dlg-settings">
+  <h3>הגדרות</h3>
+  <div class="grid" style="grid-template-columns:1fr">
+    <label class="f">מפתח API של Anthropic (נשמר רק בדפדפן הזה)
+      <input id="set-key" type="password" class="ltr" placeholder="sk-ant-..." autocomplete="off"></label>
+    <div class="muted">יוצרים מפתח ב-<a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a>. בלי מפתח אפשר לעבוד ידנית (בלי ניתוח תמונה).</div>
+    <label class="f">מודל<input id="set-model" class="ltr"></label>
+    <label class="f">שם הספק (בפתיחת המייל)<input id="set-supplier" class="ltr"></label>
+    <label class="f">מייל הספק<input id="set-email" class="ltr"></label>
+    <label class="f">חתימה<input id="set-sign" class="ltr"></label>
+    <label class="f">DRAWN BY בשרטוט<input id="set-drawn" class="ltr"></label>
+  </div>
+  <div class="row" style="margin-top:16px; justify-content:flex-end">
+    <button class="btn" id="set-cancel">ביטול</button>
+    <button class="btn primary" id="set-save">שמירה</button>
+  </div>
+</dialog>
+
+<script type="module" src="drawings/app.js"></script>
+</body>
+</html>

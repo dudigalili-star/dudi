@@ -54,6 +54,12 @@ set_env() { # set_env KEY VALUE  (replace or append in ENV_FILE)
 # Pasting into a web terminal can add invisible characters (e.g. ESC[200~ ... ESC[201~): strip them.
 clean() { printf '%s' "$1" | sed 's/\x1b\[[0-9;]*[~A-Za-z]//g; s/\^\[\[20[01]~//g; s/\[20[01]~//g' | tr -d '[:space:][:cntrl:]'; }
 
+# People often copy the whole @BotFather message: pick the token / key out of whatever was pasted.
+# (escape codes are removed first; spaces and line breaks stay, so the token's end is found)
+strip_esc() { printf '%s' "$1" | sed 's/\x1b\[[0-9;]*[~A-Za-z]//g; s/\^\[\[20[01]~//g; s/\[20[01]~//g'; }
+pick_token() { strip_esc "$1" | grep -oE '[0-9]{6,}:[A-Za-z0-9_-]{30,}' | head -1 || true; }
+pick_key() { strip_esc "$1" | grep -oE 'sk-ant-[A-Za-z0-9_-]{20,}' | head -1 || true; }
+
 check_token() { # 0 if Telegram accepts the token
   [[ "$1" =~ ^[0-9]+:[A-Za-z0-9_-]{30,}$ ]] || return 1
   curl -fsS -m 15 "https://api.telegram.org/bot$1/getMe" 2>/dev/null | grep -q '"ok":true'
@@ -142,9 +148,9 @@ if [ -z "$(get_env TELEGRAM_BOT_TOKEN)" ]; then
   tok=""
   for try in 1 2 3; do
     ask raw "Telegram bot token (from @BotFather; nothing shows while pasting): " silent
-    tok="$(clean "$raw")"
+    tok="$(pick_token "$raw")"
     if check_token "$tok"; then echo "  OK - Telegram accepted the token"; break; fi
-    echo "  X - Telegram did not accept this token (${#tok} characters). Copy it again: @BotFather -> /mybots -> API Token."
+    echo "  X - Telegram did not accept this. Copy just the token: @BotFather -> /mybots -> API Token, then tap the token once."
     tok=""
   done
   [ -n "$tok" ] || die "no valid Telegram token"
@@ -154,9 +160,9 @@ if [ -z "$(get_env ANTHROPIC_API_KEY)" ]; then
   key=""
   for try in 1 2 3; do
     ask raw "Anthropic API key (sk-ant-...; nothing shows while pasting): " silent
-    key="$(clean "$raw")"
+    key="$(pick_key "$raw")"
     if check_key "$key"; then echo "  OK - Anthropic accepted the key"; break; fi
-    echo "  X - Anthropic did not accept this key (${#key} characters). Create a new one at platform.claude.com/settings/keys."
+    echo "  X - Anthropic did not accept this key. Create a new one at platform.claude.com/settings/keys and use its Copy button."
     key=""
   done
   [ -n "$key" ] || die "no valid Anthropic API key"

@@ -22,9 +22,11 @@ say() { printf '\n\033[1;32m==> %s\033[0m\n' "$*"; }
 die() { printf '\n\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
 USERS_ARG=""
+RESET=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --users) USERS_ARG="${2:-}"; shift 2 ;;
+    --reset) RESET=1; shift ;;
     *) die "unknown option $1" ;;
   esac
 done
@@ -47,6 +49,20 @@ set_env() { # set_env KEY VALUE  (replace or append in ENV_FILE)
   printf '%s=%s\n' "$key" "$val" >> "$tmp"
   install -m 600 "$tmp" "$ENV_FILE"
   rm -f "$tmp"
+}
+
+# Pasting into a web terminal can add invisible characters (e.g. ESC[200~ ... ESC[201~): strip them.
+clean() { printf '%s' "$1" | sed 's/\x1b\[[0-9;]*[~A-Za-z]//g; s/\^\[\[20[01]~//g; s/\[20[01]~//g' | tr -d '[:space:][:cntrl:]'; }
+
+check_token() { # 0 if Telegram accepts the token
+  [[ "$1" =~ ^[0-9]+:[A-Za-z0-9_-]{30,}$ ]] || return 1
+  curl -fsS -m 15 "https://api.telegram.org/bot$1/getMe" 2>/dev/null | grep -q '"ok":true'
+}
+
+check_key() { # 0 if Anthropic accepts the key
+  [[ "$1" =~ ^sk-ant-[A-Za-z0-9_-]+$ ]] || return 1
+  curl -fsS -m 20 -o /dev/null https://api.anthropic.com/v1/models \
+    -H "x-api-key: $1" -H "anthropic-version: 2023-06-01" 2>/dev/null
 }
 
 get_env() { [ -f "$ENV_FILE" ] && grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true; }
@@ -113,14 +129,37 @@ mkdir -p "$DATA_DIR"
 [ -n "$SKIP_SYSTEM" ] || chown -R "$RUN_USER:$RUN_USER" "$DATA_DIR"
 
 say "Settings"
+# Ask again when requested (--reset) or when a saved value is not accepted any more
+if [ -n "$RESET" ] || { [ -n "$(get_env TELEGRAM_BOT_TOKEN)" ] && ! check_token "$(get_env TELEGRAM_BOT_TOKEN)"; }; then
+  [ -n "$RESET" ] || echo "The saved Telegram token is not accepted by Telegram - please enter it again."
+  set_env TELEGRAM_BOT_TOKEN ""
+fi
+if [ -n "$RESET" ] || { [ -n "$(get_env ANTHROPIC_API_KEY)" ] && ! check_key "$(get_env ANTHROPIC_API_KEY)"; }; then
+  [ -n "$RESET" ] || echo "The saved Anthropic API key is not accepted - please enter it again."
+  set_env ANTHROPIC_API_KEY ""
+fi
 if [ -z "$(get_env TELEGRAM_BOT_TOKEN)" ]; then
-  ask tok "Telegram bot token (from @BotFather): " silent
-  [ -n "$tok" ] || die "no token given"
+  tok=""
+  for try in 1 2 3; do
+    ask raw "Telegram bot token (from @BotFather; nothing shows while pasting): " silent
+    tok="$(clean "$raw")"
+    if check_token "$tok"; then echo "  OK - Telegram accepted the token"; break; fi
+    echo "  X - Telegram did not accept this token (${#tok} characters). Copy it again: @BotFather -> /mybots -> API Token."
+    tok=""
+  done
+  [ -n "$tok" ] || die "no valid Telegram token"
   set_env TELEGRAM_BOT_TOKEN "$tok"
 fi
 if [ -z "$(get_env ANTHROPIC_API_KEY)" ]; then
-  ask key "Anthropic API key (sk-ant-...): " silent
-  [ -n "$key" ] || die "no API key given"
+  key=""
+  for try in 1 2 3; do
+    ask raw "Anthropic API key (sk-ant-...; nothing shows while pasting): " silent
+    key="$(clean "$raw")"
+    if check_key "$key"; then echo "  OK - Anthropic accepted the key"; break; fi
+    echo "  X - Anthropic did not accept this key (${#key} characters). Create a new one at platform.claude.com/settings/keys."
+    key=""
+  done
+  [ -n "$key" ] || die "no valid Anthropic API key"
   set_env ANTHROPIC_API_KEY "$key"
 fi
 if [ -n "$USERS_ARG" ]; then set_env ALLOWED_USERS "$USERS_ARG"; fi

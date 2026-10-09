@@ -3,7 +3,7 @@
 # (made for an Oracle Cloud "Always Free" VM, works on any Ubuntu/Debian with systemd).
 #
 #   Install or update:   curl -fsSL https://raw.githubusercontent.com/dudigalili-star/dudi/main/bot/deploy/install.sh | sudo bash
-#   Allow Telegram users: curl -fsSL https://raw.githubusercontent.com/dudigalili-star/dudi/main/bot/deploy/install.sh | sudo bash -s -- --users 12345678
+#   Allow Telegram users: curl -fsSL dudigalili-star.github.io/dudi/i.sh | sudo bash -s -- --users 12345678
 #   Logs:                 sudo journalctl -u parts-bot -f
 #
 # Secrets are asked for interactively (never on the command line) and stored in /etc/parts-bot.env (root only).
@@ -158,7 +158,7 @@ if systemctl is-active --quiet "$SERVICE"; then
 Next: send your bot any message in Telegram. It will answer with your user number.
 Then run (with your number instead of 12345678):
 
-  curl -fsSL https://raw.githubusercontent.com/dudigalili-star/dudi/main/bot/deploy/install.sh | sudo bash -s -- --users 12345678
+  curl -fsSL dudigalili-star.github.io/dudi/i.sh | sudo bash -s -- --users 12345678
 EOF
   fi
 else

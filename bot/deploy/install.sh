@@ -71,11 +71,20 @@ if [ -z "$SKIP_SYSTEM" ]; then
   apt-get update -y
   apt-get install -y git curl ca-certificates fonts-liberation
 
+  # Finish any install that was interrupted (e.g. a dropped SSH connection)
+  dpkg --configure -a || true
+
   if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
     say "Installing Node.js 22"
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-    apt-get install -y nodejs
+    # NodeSource may not support the newest Ubuntu yet; fall back to Ubuntu's own packages
+    if curl -fsSL https://deb.nodesource.com/setup_22.x | bash -; then
+      apt-get install -y nodejs || true
+    fi
+    command -v node >/dev/null || apt-get install -y nodejs
   fi
+  # Ubuntu's nodejs package comes without npm
+  command -v npm >/dev/null || apt-get install -y npm
+  [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ] || die "Node.js 20+ is required (found $(node -v))"
 
   # Small VMs (1 GB) need some swap for npm install and the CAD engine
   mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"

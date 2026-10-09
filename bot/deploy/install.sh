@@ -54,6 +54,12 @@ set_env() { # set_env KEY VALUE  (replace or append in ENV_FILE)
 # Pasting into a web terminal can add invisible characters (e.g. ESC[200~ ... ESC[201~): strip them.
 clean() { printf '%s' "$1" | sed 's/\x1b\[[0-9;]*[~A-Za-z]//g; s/\^\[\[20[01]~//g; s/\[20[01]~//g' | tr -d '[:space:][:cntrl:]'; }
 
+# People often copy the whole @BotFather message: pick the token / key out of whatever was pasted.
+# (escape codes are removed first; spaces and line breaks stay, so the token's end is found)
+strip_esc() { printf '%s' "$1" | sed 's/\x1b\[[0-9;]*[~A-Za-z]//g; s/\^\[\[20[01]~//g; s/\[20[01]~//g'; }
+pick_token() { strip_esc "$1" | grep -oE '[0-9]{6,}:[A-Za-z0-9_-]{30,}' | head -1 || true; }
+pick_key() { strip_esc "$1" | grep -oE 'sk-ant-[A-Za-z0-9_-]{20,}' | head -1 || true; }
+
 check_token() { # 0 if Telegram accepts the token
   [[ "$1" =~ ^[0-9]+:[A-Za-z0-9_-]{30,}$ ]] || return 1
   curl -fsS -m 15 "https://api.telegram.org/bot$1/getMe" 2>/dev/null | grep -q '"ok":true'
@@ -142,24 +148,25 @@ if [ -z "$(get_env TELEGRAM_BOT_TOKEN)" ]; then
   tok=""
   for try in 1 2 3; do
     ask raw "Telegram bot token (from @BotFather; nothing shows while pasting): " silent
-    tok="$(clean "$raw")"
+    tok="$(pick_token "$raw")"
     if check_token "$tok"; then echo "  OK - Telegram accepted the token"; break; fi
-    echo "  X - Telegram did not accept this token (${#tok} characters). Copy it again: @BotFather -> /mybots -> API Token."
+    echo "  X - Telegram did not accept this. Copy just the token: @BotFather -> /mybots -> API Token, then tap the token once."
     tok=""
   done
   [ -n "$tok" ] || die "no valid Telegram token"
   set_env TELEGRAM_BOT_TOKEN "$tok"
 fi
 if [ -z "$(get_env ANTHROPIC_API_KEY)" ]; then
+  # Optional: the bot can also receive the key in Telegram (easier on a phone or tablet).
   key=""
   for try in 1 2 3; do
-    ask raw "Anthropic API key (sk-ant-...; nothing shows while pasting): " silent
-    key="$(clean "$raw")"
+    ask raw "Anthropic API key (sk-ant-...) - or just press Enter to send it to the bot in Telegram instead: " silent
+    [ -n "$(clean "$raw")" ] || { echo "  Skipped - the bot will ask for the key in Telegram."; break; }
+    key="$(pick_key "$raw")"
     if check_key "$key"; then echo "  OK - Anthropic accepted the key"; break; fi
-    echo "  X - Anthropic did not accept this key (${#key} characters). Create a new one at platform.claude.com/settings/keys."
+    echo "  X - Anthropic did not accept this key. Paste it again, or press Enter to send it in Telegram."
     key=""
   done
-  [ -n "$key" ] || die "no valid Anthropic API key"
   set_env ANTHROPIC_API_KEY "$key"
 fi
 if [ -n "$USERS_ARG" ]; then set_env ALLOWED_USERS "$USERS_ARG"; fi
@@ -200,15 +207,12 @@ sleep 4
 if systemctl is-active --quiet "$SERVICE"; then
   say "The bot is running!"
   journalctl -u "$SERVICE" -n 5 --no-pager || true
-  if [ -z "$(get_env ALLOWED_USERS)" ]; then
-    cat <<'EOF'
+  cat <<'EOF'
 
-Next: send your bot any message in Telegram. It will answer with your user number.
-Then run (with your number instead of 12345678):
-
-  curl -fsSL dudigalili-star.github.io/dudi/i.sh | sudo bash -s -- --users 12345678
+Next: open your bot in Telegram and send /start.
+  - The first person to write to the bot becomes its owner (nobody else can use it).
+  - If the API key was skipped, the bot asks for it: paste the sk-ant-... key as a message.
 EOF
-  fi
 else
   journalctl -u "$SERVICE" -n 30 --no-pager || true
   die "the bot did not start — see the log above"

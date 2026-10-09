@@ -1,0 +1,7 @@
+.git
+**/node_modules
+bot/data
+bot/test
+index.html
+parts-app/vendor/libs.js
+parts-app/icons

@@ -12,7 +12,7 @@ import { Resvg } from '@resvg/resvg-js';
 import {
   normalizePart, warnings, wantsFullSet, canMake3D, isComplex, displayName, fileBase, overallLength, fmt, KINDS,
 } from '../parts-app/core/model.js';
-import { buildDrawing, buildViews11 } from '../parts-app/core/drawing.js';
+import { buildDrawing, buildViews11, SHEET_W, SHEET_H } from '../parts-app/core/drawing.js';
 import { toSVG, toPDF, toDXF } from '../parts-app/core/render.js';
 import { makeSTEP, loadCAD } from '../parts-app/core/cad.js';
 import { analyzeImages, DEFAULT_MODEL } from '../parts-app/core/ai.js';
@@ -214,11 +214,23 @@ export function createBot({
     if (!w || !h || !(mt === 'image/jpeg' || mt === 'image/png')) return null;
     return { src: `data:${mt};base64,${buf.toString('base64')}`, w, h };
   }
-  async function sheetFor(p) {
-    return buildDrawing(p, { drawnBy, image: await drawingImageFor(p) }).sheet;
+  async function drawingFor(p) {
+    return buildDrawing(p, { drawnBy, image: await drawingImageFor(p) });
   }
+  async function sheetFor(p) {
+    return (await drawingFor(p)).sheet;
+  }
+  // Chat preview: only the views and their dimensions, so they are readable on a phone.
+  // (The full A4 sheet with notes and title block is in the PDF.)
   async function pngFor(p) {
-    const svg = toSVG(await sheetFor(p));
+    const { sheet, views } = await drawingFor(p);
+    let svg;
+    if (views && views.w > 0 && views.h > 0) {
+      const m = 6;
+      const x = Math.max(0, views.x - m), y = Math.max(0, views.y - m);
+      const w = Math.min(SHEET_W - x, views.w + 2 * m), h = Math.min(SHEET_H - y, views.h + 2 * m);
+      svg = toSVG(sheet, { width: w, height: h, viewBox: `${x} ${y} ${w} ${h}` });
+    } else svg = toSVG(sheet);
     const r = new Resvg(svg, {
       fitTo: { mode: 'width', value: 1600 },
       background: '#ffffff',

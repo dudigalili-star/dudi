@@ -132,12 +132,33 @@ class Store {
   async delImage(id) {
     try { await fs.unlink(this.imgFile(id)); } catch { /* gone */ }
   }
+  // Bot-wide settings that can be set from Telegram: the owner and the Anthropic API key.
+  async getConfig() {
+    if (!this.config) {
+      try { this.config = JSON.parse(await fs.readFile(path.join(this.dir, 'config.json'), 'utf8')); } catch { this.config = {}; }
+    }
+    return this.config;
+  }
+  async saveConfig() {
+    await fs.mkdir(this.dir, { recursive: true });
+    const file = path.join(this.dir, 'config.json');
+    await fs.writeFile(`${file}.tmp`, JSON.stringify(this.config), { mode: 0o600 });
+    await fs.rename(`${file}.tmp`, file);
+  }
 }
+
+const KEY_RE = /sk-ant-[A-Za-z0-9_-]{20,}/;
+const NEED_KEY = `🔑 *חסר מפתח API של Claude*
+
+כדי שאוכל לנתח תמונות ותיאורים, שלח לי כאן את המפתח כהודעה רגילה (מתחיל ב-\`sk-ant-\`).
+אני שומר אותו בשרת ומוחק את ההודעה מהצ'אט מיד.
+
+יוצרים מפתח ב-platform.claude.com/settings/keys ← Create Key ← Copy.`;
 
 /* ───────────── the bot ───────────── */
 
 export function createBot({
-  token, anthropic, model = DEFAULT_MODEL, allowedUsers = [], dataDir = './data',
+  token, anthropic = null, anthropicKey = '', makeAnthropic = null, model = DEFAULT_MODEL, allowedUsers = [], dataDir = './data',
   supplierName = 'Mandy', supplierEmail = 'sales6@jrs-sourcing.com', signature = 'Dudu Galili', drawnBy = 'Dudu Galili',
   apiRoot = 'https://api.telegram.org', log = console,
 }) {
@@ -145,6 +166,16 @@ export function createBot({
   const store = new Store(dataDir);
   const albums = new Map(); // media_group_id -> {timer, buffers, caption, ctx}
   const queues = new Map(); // chatId -> promise (handle one message at a time per chat)
+
+  // The Claude client: fixed (tests), or built from the key in the environment / sent in Telegram.
+  let cached = { key: null, client: null };
+  async function getClient() {
+    if (anthropic) return anthropic;
+    const key = (await store.getConfig()).anthropicKey || anthropicKey;
+    if (!key || !makeAnthropic) return null;
+    if (cached.key !== key) cached = { key, client: makeAnthropic(key) };
+    return cached.client;
+  }
 
   const inQueue = (chatId, fn) => {
     const prev = queues.get(chatId) || Promise.resolve();
@@ -208,20 +239,52 @@ export function createBot({
     await ctx.reply(`❌ ${msg}`).catch(() => {});
   }
 
-  /* access control: the bot spends API credit, so only listed users may use it */
+  /* access control: the bot spends API credit, so only its owner(s) may use it.
+     Owners come from ALLOWED_USERS; if there are none yet, the first person to write becomes the owner. */
   bot.use(async (ctx, next) => {
     const uid = ctx.from?.id;
     if (!uid) return;
-    if (!allowedUsers.length || !allowedUsers.includes(String(uid))) {
-      if (ctx.message) {
-        await ctx.reply(`⛔ הבוט פרטי.\nמספר המשתמש שלך הוא: ${uid}\nכדי לקבל גישה יש להוסיף אותו ל-ALLOWED_USERS בהגדרות השרת.`);
-      } else if (ctx.callbackQuery) await ctx.answerCallbackQuery();
+    const cfg = await store.getConfig();
+    const owners = new Set([...allowedUsers.map(String), ...(cfg.owners || [])]);
+    if (!owners.size && ctx.message) {
+      cfg.owners = [String(uid)];
+      await store.saveConfig();
+      owners.add(String(uid));
+      log.warn?.(`Telegram user ${uid} is now the owner of the bot`);
+      await ctx.reply('👑 נרשמת כבעלים של הבוט. מעכשיו רק אתה יכול להשתמש בו.');
+      if (!(await getClient())) await ctx.reply(NEED_KEY, { parse_mode: 'Markdown' });
+    }
+    if (!owners.has(String(uid))) {
+      if (ctx.message) await ctx.reply(`⛔ הבוט פרטי.\nמספר המשתמש שלך הוא: ${uid}`);
+      else if (ctx.callbackQuery) await ctx.answerCallbackQuery();
       return;
     }
     await next();
   });
 
-  bot.command(['start', 'help'], (ctx) => ctx.reply(HELP, { parse_mode: 'Markdown' }));
+  /* the Anthropic API key can be sent as a message; it is checked, saved, and the message deleted */
+  bot.use(async (ctx, next) => {
+    const text = ctx.message?.text || ctx.message?.caption || '';
+    const m = KEY_RE.exec(text);
+    if (!m) return next();
+    await ctx.deleteMessage().catch(() => {});
+    if (!makeAnthropic) return ctx.reply('המפתח מוגדר בשרת ולא ניתן לשנות אותו מכאן.');
+    try {
+      await makeAnthropic(m[0]).models.list({ limit: 1 });
+    } catch (e) {
+      const why = e?.status === 401 ? 'Anthropic לא מכיר את המפתח הזה' : (e?.message || String(e));
+      return ctx.reply(`❌ המפתח לא התקבל: ${why}\nהעתק אותו שוב (כפתור Copy באתר) ושלח שוב.`);
+    }
+    const cfg = await store.getConfig();
+    cfg.anthropicKey = m[0];
+    await store.saveConfig();
+    return ctx.reply('✅ המפתח נשמר (וההודעה נמחקה מהצ\'אט).\n\nאפשר להתחיל: שלח תמונה של חלק או סקיצה, או תיאור בטקסט.');
+  });
+
+  bot.command(['start', 'help'], async (ctx) => {
+    await ctx.reply(HELP, { parse_mode: 'Markdown' });
+    if (!(await getClient())) await ctx.reply(NEED_KEY, { parse_mode: 'Markdown' });
+  });
 
   bot.command('new', async (ctx) => {
     const s = await store.get(ctx.chat.id);
@@ -252,10 +315,12 @@ export function createBot({
 
   async function createPart(ctx, images, text) {
     if (!images.length && !text) return;
+    const client = await getClient();
+    if (!client) return ctx.reply(NEED_KEY, { parse_mode: 'Markdown' });
     await withTyping(ctx, async () => {
       const wait = await ctx.reply(images.length ? '🔍 מנתח את התמונה… (בדרך כלל 20–60 שניות)' : '🔍 בונה את החלק מהתיאור…');
       try {
-        const spec = await analyzeImages({ client: anthropic, model, images: images.map((i) => ({ base64: i.buf.toString('base64'), mediaType: i.mediaType })), userText: text });
+        const spec = await analyzeImages({ client, model, images: images.map((i) => ({ base64: i.buf.toString('base64'), mediaType: i.mediaType })), userText: text });
         const s = await store.get(ctx.chat.id);
         const p = normalizePart({ ...spec, imageIds: [] });
         for (const img of images) {
@@ -277,9 +342,11 @@ export function createBot({
     const s = await store.get(ctx.chat.id);
     const i = s.parts.findIndex((x) => x.id === s.currentId);
     if (i < 0) return createPart(ctx, [], text);
+    const client = await getClient();
+    if (!client) return ctx.reply(NEED_KEY, { parse_mode: 'Markdown' });
     await withTyping(ctx, async () => {
       const cur = normalizePart(s.parts[i]);
-      const spec = await analyzeImages({ client: anthropic, model, userText: text, current: cur });
+      const spec = await analyzeImages({ client, model, userText: text, current: cur });
       const p = normalizePart({ ...spec, id: cur.id, imageIds: cur.imageIds, createdAt: cur.createdAt, fullSet: cur.fullSet });
       s.parts[i] = p;
       await store.save(ctx.chat.id);

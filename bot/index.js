@@ -11,13 +11,14 @@ const need = (k) => {
 };
 
 const token = need('TELEGRAM_BOT_TOKEN');
-const anthropic = new Anthropic({ apiKey: need('ANTHROPIC_API_KEY') });
 const allowedUsers = (env.ALLOWED_USERS || '').split(/[\s,]+/).filter(Boolean);
-if (!allowedUsers.length) console.warn('ALLOWED_USERS is empty: the bot will only reply with each user\'s ID until you set it.');
+if (!allowedUsers.length) console.warn('ALLOWED_USERS is empty: the first Telegram user to message the bot becomes its owner.');
+if (!env.ANTHROPIC_API_KEY) console.warn('ANTHROPIC_API_KEY is not set: the bot will ask its owner for the key in Telegram.');
 
 const { bot } = createBot({
   token,
-  anthropic,
+  anthropicKey: env.ANTHROPIC_API_KEY || '',
+  makeAnthropic: (apiKey) => new Anthropic({ apiKey }),
   model: env.CLAUDE_MODEL || undefined,
   allowedUsers,
   dataDir: env.DATA_DIR || './data',

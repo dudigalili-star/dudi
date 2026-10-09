@@ -157,15 +157,16 @@ if [ -z "$(get_env TELEGRAM_BOT_TOKEN)" ]; then
   set_env TELEGRAM_BOT_TOKEN "$tok"
 fi
 if [ -z "$(get_env ANTHROPIC_API_KEY)" ]; then
+  # Optional: the bot can also receive the key in Telegram (easier on a phone or tablet).
   key=""
   for try in 1 2 3; do
-    ask raw "Anthropic API key (sk-ant-...; nothing shows while pasting): " silent
+    ask raw "Anthropic API key (sk-ant-...) - or just press Enter to send it to the bot in Telegram instead: " silent
+    [ -n "$(clean "$raw")" ] || { echo "  Skipped - the bot will ask for the key in Telegram."; break; }
     key="$(pick_key "$raw")"
     if check_key "$key"; then echo "  OK - Anthropic accepted the key"; break; fi
-    echo "  X - Anthropic did not accept this key. Create a new one at platform.claude.com/settings/keys and use its Copy button."
+    echo "  X - Anthropic did not accept this key. Paste it again, or press Enter to send it in Telegram."
     key=""
   done
-  [ -n "$key" ] || die "no valid Anthropic API key"
   set_env ANTHROPIC_API_KEY "$key"
 fi
 if [ -n "$USERS_ARG" ]; then set_env ALLOWED_USERS "$USERS_ARG"; fi
@@ -206,15 +207,12 @@ sleep 4
 if systemctl is-active --quiet "$SERVICE"; then
   say "The bot is running!"
   journalctl -u "$SERVICE" -n 5 --no-pager || true
-  if [ -z "$(get_env ALLOWED_USERS)" ]; then
-    cat <<'EOF'
+  cat <<'EOF'
 
-Next: send your bot any message in Telegram. It will answer with your user number.
-Then run (with your number instead of 12345678):
-
-  curl -fsSL dudigalili-star.github.io/dudi/i.sh | sudo bash -s -- --users 12345678
+Next: open your bot in Telegram and send /start.
+  - The first person to write to the bot becomes its owner (nobody else can use it).
+  - If the API key was skipped, the bot asks for it: paste the sk-ant-... key as a message.
 EOF
-  fi
 else
   journalctl -u "$SERVICE" -n 30 --no-pager || true
   die "the bot did not start — see the log above"

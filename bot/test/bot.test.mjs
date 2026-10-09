@@ -158,6 +158,64 @@ const again = createBot({ token: TOKEN, anthropic, allowedUsers: [String(OWNER)]
 const st = await again.store.get(OWNER);
 assert.equal(st.parts.length, 1);
 
+// 9. no ALLOWED_USERS and no API key: first user becomes owner, the key is sent in Telegram
+{
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'partsbot-'));
+  const made = [];
+  const makeAnthropic = (key) => {
+    made.push(key);
+    return {
+      models: { list: async () => { if (!key.startsWith('sk-ant-good')) { const e = new Error('invalid x-api-key'); e.status = 401; throw e; } return { data: [] }; } },
+      beta: anthropic.beta,
+    };
+  };
+  const b2 = createBot({ token: TOKEN, makeAnthropic, allowedUsers: [], dataDir: dir2, apiRoot, log: { error() {}, warn() {} } });
+  await b2.bot.init();
+  const OWNER2 = 555, OTHER = 666;
+  const m2 = (extra, who = OWNER2) => b2.bot.handleUpdate({ update_id: uid++, message: { message_id: uid, date: 0, chat: { id: who, type: 'private' }, from: from(who), ...extra } });
+  const aiBefore = aiRequests.length;
+
+  n = calls.length;
+  await m2({ text: '/start', entities: [{ type: 'bot_command', offset: 0, length: 6 }] });
+  let texts = sent(since(n), 'sendMessage').map((c) => c.params.text).join('\n');
+  assert.match(texts, /בעלים/, 'first user becomes owner');
+  assert.match(texts, /sk-ant-/, 'asks for the key');
+
+  n = calls.length;
+  await m2({ text: 'hi' }, OTHER);
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /פרטי/, 'second user refused');
+
+  n = calls.length;
+  await m2({ photo, caption: 'x' });
+  await new Promise((r) => setTimeout(r, 200));
+  assert.match(sent(since(n), 'sendMessage').map((c) => c.params.text).join(' '), /sk-ant-/, 'photo without key asks for key');
+  assert.equal(aiRequests.length, aiBefore, 'no Claude call without a key');
+
+  n = calls.length;
+  await m2({ text: 'sk-ant-bad-0123456789abcdefghij' });
+  assert.equal(sent(since(n), 'deleteMessage').length, 1, 'key message deleted');
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /לא התקבל/);
+
+  n = calls.length;
+  await m2({ text: 'here it is: sk-ant-good-0123456789abcdefghij thanks' });
+  assert.equal(sent(since(n), 'deleteMessage').length, 1);
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /נשמר/);
+  const cfgFile = path.join(dir2, 'config.json');
+  assert.equal(JSON.parse(fs.readFileSync(cfgFile, 'utf8')).anthropicKey, 'sk-ant-good-0123456789abcdefghij');
+  assert.equal(fs.statSync(cfgFile).mode & 0o777, 0o600, 'config is private');
+
+  n = calls.length;
+  await m2({ photo, caption: 'pin' });
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal(aiRequests.length, aiBefore + 1, 'Claude called once the key is set');
+  assert.ok(sent(since(n), 'sendPhoto').length === 1, 'card sent');
+
+  const b3 = createBot({ token: TOKEN, makeAnthropic, allowedUsers: [], dataDir: dir2, apiRoot, log: { error() {}, warn() {} } });
+  const cfg3 = await b3.store.getConfig();
+  assert.deepEqual(cfg3.owners, [String(OWNER2)]);
+  assert.ok(cfg3.anthropicKey);
+}
+
 console.log(`OK — ${calls.length} Telegram calls, ${aiRequests.length} Claude calls. Card preview: ${path.join(dataDir, 'card.png')}`);
 server.close();
 process.exit(0);

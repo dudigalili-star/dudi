@@ -1,5 +1,5 @@
 // Offline support + "share to app" (Android share sheet → new part with the shared photos).
-const VERSION = 'parts-app-v1';
+const VERSION = 'parts-app-v2';
 const SHELL = [
   './', './index.html', './app.js', './manifest.webmanifest',
   './core/model.js', './core/drawing.js', './core/render.js', './core/cad.js', './core/ai.js', './core/email.js',

@@ -10,11 +10,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="שרטוטים">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
   :root {
     --bg: #f7f6f3; --surface: #ffffff; --border: #e8e5de;
     --text: #1a1814; --muted: #8a8680; --accent: #2d5a3d;
@@ -101,8 +103,19 @@
     #mail-card { order: 2; }
     header { padding: 10px 12px; }
     header h1 small { display: none; }
+    header h1 { font-size: 16px; white-space: nowrap; }
+    header { gap: 10px; }
     table.t { display: block; overflow-x: auto; }
+    /* iPhone: 16px stops Safari from zooming into fields; respect the notch and home bar */
+    input, select, textarea { font-size: 16px; }
+    .btn { padding: 9px 14px; }
+    .btn.small { padding: 6px 10px; }
+    .btn.big { flex: 1; justify-content: center; padding: 14px; font-size: 16px; }
   }
+  header { padding-top: max(12px, env(safe-area-inset-top)); padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+  body { padding-bottom: env(safe-area-inset-bottom); -webkit-text-size-adjust: 100%; }
+  .ios-hint { background: var(--accent-light); border-bottom: 1px solid #b7d9c2; padding: 10px 14px; font-size: 14px; padding-top: max(10px, env(safe-area-inset-top)); }
+  .ios-hint .btn { margin-inline-start: 6px; }
 </style>
 </head>
 <body>

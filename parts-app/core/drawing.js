@@ -119,12 +119,18 @@ const withTol = (label, tol) => (tol ? `${label} ${tol}` : label);
 
 /* ───────────────────────── Turned parts ───────────────────────── */
 
+// Hole callouts are stacked in rows above the part, one row per label.
+function labelRows(t) {
+  return new Set(t.crossHoles.map((h) => `${h.diameter}|${h.thread}`)).size + t.bores.length;
+}
+
 function turnedEnvelope(p, s) {
   const t = p.turned;
   const L = overallLength(p);
   const R = Math.max(...t.segments.map((x) => x.diameter)) / 2;
   const threadDims = t.segments.some((g) => g.thread && g.threadLength > 0 && g.threadLength < g.length);
-  const above = 12 + (threadDims ? 7 : 0) + 12; // overall dim + labels
+  const labels = labelRows(t);
+  const above = Math.max(12 + (threadDims ? 7 : 0), 5 + labels * 5 + 7) + 12; // hole labels, overall dim
   const below = 12 + t.crossHoles.length * 7 + 4;
   const gap = 22;
   return {
@@ -234,7 +240,8 @@ function drawTurned(S, p, s, ox, oy) {
   const yBot = Y(-R);
   // Thread lengths (just above the part)
   threadLenDims.forEach((d) => hDim(S, X(d.a), Y(d.r), X(d.b), Y(d.r), yTop - 7, `THREAD ${fmt(d.b - d.a)}`));
-  const overallY = yTop - 10 - (threadLenDims.length ? 7 : 0);
+  // keep the overall length dimension above the hole callouts
+  const overallY = Math.min(yTop - 10 - (threadLenDims.length ? 7 : 0), yTop - 5 - labelRows(t) * 5 - 7);
   hDim(S, X(0), Y(segs[0].diameter / 2), X(L), Y(rr), overallY, withTol(fmt(L), t.overallTol));
   // Chain of step lengths below
   if (segs.length > 1) {
@@ -493,6 +500,28 @@ export function scaleLabel(s) {
   return `1:${fmt(1 / s)}`;
 }
 
+// Notes written by hand or by the AI often repeat what the standard notes already say.
+const STANDARD_NOTE = [
+  /dimensions? (are )?in mm|units?:? *mm/i,
+  /general tol|2768|unless otherwise/i,
+  /burr|sharp edges?/i,
+  /^material\b/i,
+  /^qty\b|^quantity\b/i,
+];
+export function extraNotes(p) {
+  const seen = new Set();
+  return p.notes.filter((x) => {
+    const t = x.trim();
+    const key = t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!t || seen.has(key)) return false;
+    seen.add(key);
+    if (STANDARD_NOTE.some((re) => re.test(t))) return false;
+    if (p.finish && /^(finish|paint|coating)\b/i.test(t)) return false;
+    if (p.kind === 'turned' && /^chamfer\b/i.test(t) && (p.turned.chamferLeft || p.turned.chamferRight)) return false;
+    return true;
+  });
+}
+
 export function partNotes(p) {
   const n = [];
   n.push('ALL DIMENSIONS IN mm.');
@@ -516,7 +545,7 @@ export function partNotes(p) {
     n.push(`ID ${fmt(sp.outerDiameter - 2 * sp.wireDiameter)} (REF).`);
   }
   if (p.finish) n.push(`FINISH: ${p.finish.toUpperCase()}.`);
-  p.notes.forEach((x) => n.push(x.endsWith('.') ? x : `${x}.`));
+  extraNotes(p).forEach((x) => n.push(x.endsWith('.') ? x : `${x}.`));
   return n.map((x, i) => `${i + 1}. ${x}`);
 }
 
@@ -626,9 +655,31 @@ export function buildDrawing(p, opts = {}) {
       S.text(SHEET_W / 2, 80, 'SEE ATTACHED SKETCH / PHOTO', { h: 6, anchor: 'middle', bold: true });
     }
   }
+  const viewEnd = S.prims.length;
   notesBlock(S, p);
   titleBlock(S, p, scale, o);
-  return { sheet: S, scale };
+  return { sheet: S, scale, views: primsBox(S.prims.slice(1, viewEnd)) };
+}
+
+// Bounding box (sheet mm) of a list of primitives.
+export function primsBox(prims) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  const add = (x, y) => { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); };
+  for (const q of prims) {
+    if (q.t === 'line') { add(q.x1, q.y1); add(q.x2, q.y2); }
+    else if (q.t === 'circle' || q.t === 'arc') { add(q.cx - q.r, q.cy - q.r); add(q.cx + q.r, q.cy + q.r); }
+    else if (q.t === 'poly') q.pts.forEach(([x, y]) => add(x, y));
+    else if (q.t === 'image') { add(q.x, q.y); add(q.x + q.w, q.y + q.h); }
+    else if (q.t === 'text') {
+      const w = textWidth(q.text, q.h);
+      if (q.rot) { add(q.x - q.h, q.y - w); add(q.x + q.h, q.y + w); }
+      else {
+        const left = q.anchor === 'middle' ? q.x - w / 2 : q.anchor === 'end' ? q.x - w : q.x;
+        add(left, q.y - q.h); add(left + w, q.y + q.h * 0.3);
+      }
+    }
+  }
+  return Number.isFinite(x1) ? { x: x1, y: y1, w: x2 - x1, h: y2 - y1 } : null;
 }
 
 // Views only, at 1:1, for DXF (no frame / title block).

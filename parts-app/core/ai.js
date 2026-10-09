@@ -121,7 +121,7 @@ Other fields:
 - material: the real grade if known (e.g. "ST-37", "AISI 1020", "AISI 304", "POM (Acetal) Black", "Brass"). Never write vague names like "hardened steel" — if hardness is required, put the steel grade in material and "HARDEN TO xx HRC" in notes. Empty if unknown.
 - finish: e.g. "Paint RAL 7021", "Zinc plated"; empty if none.
 - quantity: number of pieces if given, else 0.
-- notes: short English manufacturing notes that must appear on the drawing (welding, press fit, hardness, surface finish...). Do not repeat dimensions, material or finish.
+- notes: short English manufacturing notes that must appear on the drawing (welding, press fit, hardness, surface roughness...). Only what is specific to this part. The drawing already has standard notes for: dimensions in mm, general tolerances ISO 2768-m, deburr/break sharp edges, chamfers, material, finish and quantity — never repeat those. Empty if nothing special.
 - questions: in HEBREW, everything that is ambiguous or missing and that the supplier would ask about (unclear digit, missing chamfer size, hole reference point, thread pitch, which way a step faces, tolerance on a fit). Be specific. Empty if everything is clear.
 - estimated: in HEBREW, list of dimensions you estimated rather than read.`;
 

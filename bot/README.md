@@ -33,7 +33,21 @@
 2. צור מפתח (`sk-ant-...`).
 3. ודא שיש קרדיט בחשבון.
 
-### 3. הרצה על שרת
+### 3. הרצה על שרת חינמי (Oracle Cloud)
+על שרת Ubuntu (למשל Oracle Always Free), אחרי התחברות ב-SSH, מריצים פקודה אחת:
+```bash
+curl -fsSL https://raw.githubusercontent.com/dudigalili-star/dudi/main/bot/deploy/install.sh | sudo bash
+```
+הסקריפט עושה את הכל:
+- מתקין את Node.js ואת הבוט
+- שואל את הטוקן ואת המפתח (הם לא מוצגים על המסך)
+- מגדיר את הבוט כשירות שעולה לבד אחרי הפעלה מחדש של השרת
+
+להוספת משתמשים מורשים: אותה פקודה עם `-s -- --users 12345678`.
+לעדכון לגרסה חדשה: מריצים שוב את אותה פקודה.
+לצפייה בלוגים: `sudo journalctl -u parts-bot -f`.
+
+### 3ב. הרצה בשירות ענן אחר
 הבוט צריך לרוץ כל הזמן. האפשרות הפשוטה היא שירות ענן שמריץ Docker ישירות מה-GitHub. ב-Railway, Render (Background Worker) או Fly.io:
 
 1. צור פרויקט חדש מהריפו `dudigalili-star/dudi`. ה-`Dockerfile` שבשורש הריפו מגדיר את הבוט.

@@ -40,4 +40,10 @@ process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
 
 console.log('Bot is running (long polling)…');
-await bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`Logged in as @${me.username}`) });
+try {
+  await bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`Logged in as @${me.username}`) });
+} catch (e) {
+  if (e?.error_code === 401 || e?.error_code === 404) console.error('Telegram rejected the bot token — check TELEGRAM_BOT_TOKEN (from @BotFather).');
+  else console.error('Bot stopped:', e?.message || e);
+  process.exit(1);
+}

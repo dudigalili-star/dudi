@@ -43,6 +43,8 @@ const server = http.createServer(async (req, res) => {
   if (/^send/.test(method) && method !== 'sendChatAction') return ok({ message_id: ++msgId, date: 0, chat: { id: OWNER, type: 'private' } });
   return ok(true);
 });
+// keep idle connections open longer than the client does, so a reused socket is never closed mid-request
+server.keepAliveTimeout = 60000;
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const apiRoot = `http://127.0.0.1:${server.address().port}`;
 

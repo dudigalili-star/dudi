@@ -15,7 +15,7 @@ const allowedUsers = (env.ALLOWED_USERS || '').split(/[\s,]+/).filter(Boolean);
 if (!allowedUsers.length) console.warn('ALLOWED_USERS is empty: the first Telegram user to message the bot becomes its owner.');
 if (!env.ANTHROPIC_API_KEY) console.warn('ANTHROPIC_API_KEY is not set: the bot will ask its owner for the key in Telegram.');
 
-const { bot } = createBot({
+const { bot, announceVersion } = createBot({
   token,
   anthropicKey: env.ANTHROPIC_API_KEY || '',
   makeAnthropic: (apiKey) => new Anthropic({ apiKey }),
@@ -33,6 +33,8 @@ await bot.api.setMyCommands([
   { command: 'list', description: 'החלקים בבקשה' },
   { command: 'email', description: 'מייל לספק + ZIP' },
   { command: 'clear', description: 'בקשה חדשה' },
+  { command: 'update', description: 'עדכון הבוט לגרסה האחרונה' },
+  { command: 'version', description: 'הגרסה שרצה עכשיו' },
   { command: 'help', description: 'עזרה' },
 ]).catch((e) => console.warn('setMyCommands failed', e.message));
 
@@ -42,7 +44,10 @@ process.once('SIGTERM', stop);
 
 console.log('Bot is running (long polling)…');
 try {
-  await bot.start({ drop_pending_updates: false, onStart: (me) => console.log(`Logged in as @${me.username}`) });
+  await bot.start({ drop_pending_updates: false, onStart: (me) => {
+    console.log(`Logged in as @${me.username}`);
+    announceVersion().catch((e) => console.warn('announce failed', e.message));
+  } });
 } catch (e) {
   if (e?.error_code === 401 || e?.error_code === 404) console.error('Telegram rejected the bot token — check TELEGRAM_BOT_TOKEN (from @BotFather).');
   else console.error('Bot stopped:', e?.message || e);

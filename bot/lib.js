@@ -2,6 +2,8 @@
 // with the web app in ../parts-app/core.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { Bot, InlineKeyboard, InputFile } from 'grammy';
 import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
@@ -30,7 +32,24 @@ const HELP = `📐 *בוט שרטוטים לספק*
 /new — החלק הבא שאכתוב בטקסט יהיה חלק חדש
 /list — החלקים בבקשה הנוכחית
 /email — מייל לספק + ZIP עם כל הקבצים
-/clear — התחלת בקשה חדשה`;
+/clear — התחלת בקשה חדשה
+/update — עדכון הבוט לגרסה האחרונה (קורה גם לבד כל לילה)
+/version — איזו גרסה רצה עכשיו`;
+
+const REPO_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// The running version = the git commit the server is on.
+export function gitVersion(dir = REPO_DIR) {
+  return new Promise((resolve) => {
+    execFile('git', ['-c', 'safe.directory=*', '-C', dir, 'log', '-1', '--format=%h%n%cd%n%s%n%b', '--date=format:%d/%m/%Y %H:%M'], (err, out) => {
+      if (err) return resolve(null);
+      const [hash, date, subject, ...body] = out.split('\n');
+      // a merged PR reads "Merge pull request #N from …"; its title (what changed) is the next line
+      const title = /^Merge pull request/.test(subject) ? body.find((l) => l.trim()) || subject : subject;
+      resolve({ hash, date, subject: title.trim() });
+    });
+  });
+}
 
 /* ───────────── small helpers ───────────── */
 
@@ -160,7 +179,7 @@ const NEED_KEY = `🔑 *חסר מפתח API של Claude*
 export function createBot({
   token, anthropic = null, anthropicKey = '', makeAnthropic = null, model = DEFAULT_MODEL, allowedUsers = [], dataDir = './data',
   supplierName = 'Mandy', supplierEmail = 'sales6@jrs-sourcing.com', signature = 'Dudu Galili', drawnBy = 'Dudu Galili',
-  apiRoot = 'https://api.telegram.org', log = console,
+  apiRoot = 'https://api.telegram.org', log = console, versionFn = gitVersion,
 }) {
   const bot = new Bot(token, { client: { apiRoot } });
   const store = new Store(dataDir);
@@ -308,6 +327,17 @@ export function createBot({
   });
 
   bot.command('email', (ctx) => inQueue(ctx.chat.id, () => sendEmail(ctx)));
+
+  const verText = (v) => (v ? `${v.hash} (${v.date})\n${v.subject}` : 'לא ידוע');
+
+  bot.command('version', async (ctx) => ctx.reply(`📦 גרסה: ${verText(await versionFn())}`));
+
+  // The server watches for this file (parts-bot-update.path) and runs bot/deploy/update.sh
+  bot.command('update', async (ctx) => {
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(path.join(dataDir, 'update-request'), String(ctx.chat.id));
+    return ctx.reply('🔄 בודק אם יש גרסה חדשה ומעדכן… אחזור עם הודעה בעוד דקה-שתיים.');
+  });
 
   bot.command('clear', (ctx) => ctx.reply('להתחיל בקשה חדשה? כל החלקים הנוכחיים יימחקו.', {
     reply_markup: new InlineKeyboard().text('כן, בקשה חדשה', 'clear:yes').text('ביטול', 'clear:no'),
@@ -501,8 +531,27 @@ export function createBot({
 
   bot.catch((err) => log.error?.('bot error', err.error || err));
 
+  // After a restart: tell the owner about an update (or a failed one that was rolled back).
+  async function announceVersion() {
+    const read = async (f) => { try { const t = await fs.readFile(path.join(dataDir, f), 'utf8'); await fs.unlink(path.join(dataDir, f)); return t.trim(); } catch { return null; } };
+    const asked = await read('update-notify');
+    const failed = await read('update-failed');
+    const cfg = await store.getConfig();
+    const v = await versionFn();
+    const chats = asked ? [asked] : [...new Set([...allowedUsers.map(String), ...(cfg.owners || [])])];
+    let text = null;
+    if (failed) text = `⚠️ העדכון האחרון לא עלה כמו שצריך, אז חזרתי לגרסה הקודמת:\n${verText(v)}`;
+    else if (v && cfg.lastVersion && cfg.lastVersion !== v.hash) text = `🆕 הבוט עודכן לגרסה חדשה:\n${verText(v)}`;
+    else if (asked) text = `✅ הבוט כבר בגרסה האחרונה:\n${verText(v)}`;
+    if (text) for (const c of chats) await bot.api.sendMessage(c, text).catch((e) => log.warn?.('announce failed', e.message));
+    if (v && cfg.lastVersion !== v.hash) {
+      cfg.lastVersion = v.hash;
+      await store.saveConfig();
+    }
+  }
+
   // Warm up the CAD engine in the background so the first STEP is fast.
   const warm = loadCAD().catch((e) => log.warn?.('CAD engine failed to load', e));
 
-  return { bot, store, warm };
+  return { bot, store, warm, announceVersion };
 }

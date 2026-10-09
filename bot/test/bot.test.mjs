@@ -216,6 +216,52 @@ assert.equal(st.parts.length, 1);
   assert.ok(cfg3.anthropicKey);
 }
 
+// 10. /version, /update and the message after an update
+{
+  const dir3 = fs.mkdtempSync(path.join(os.tmpdir(), 'partsbot-'));
+  let ver = { hash: 'aaa1111', date: '09/10/2026 10:00', subject: 'first' };
+  const b4 = createBot({ token: TOKEN, anthropic, allowedUsers: [String(OWNER)], dataDir: dir3, apiRoot, log: { error() {}, warn() {} }, versionFn: async () => ver });
+  await b4.bot.init();
+  const cmd4 = (text) => b4.bot.handleUpdate({ update_id: uid++, message: { message_id: uid, date: 0, chat, from: from(), text, entities: [{ type: 'bot_command', offset: 0, length: text.length }] } });
+
+  n = calls.length;
+  await cmd4('/version');
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /aaa1111/);
+
+  n = calls.length;
+  await cmd4('/update');
+  assert.equal(fs.readFileSync(path.join(dir3, 'update-request'), 'utf8'), String(OWNER), '/update asks the server to update');
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /מעדכן/);
+
+  // first start: remembers the version, says nothing
+  n = calls.length;
+  await b4.announceVersion();
+  assert.equal(sent(since(n), 'sendMessage').length, 0);
+
+  // after a nightly update to a new version: tells the owner
+  ver = { hash: 'bbb2222', date: '10/10/2026 03:31', subject: 'better drawings' };
+  n = calls.length;
+  await b4.announceVersion();
+  let msgs = sent(since(n), 'sendMessage');
+  assert.equal(msgs.length, 1);
+  assert.equal(String(msgs[0].params.chat_id), String(OWNER));
+  assert.match(msgs[0].params.text, /עודכן.*\n.*bbb2222/s);
+
+  // /update when already up to date: the server leaves update-notify, the bot confirms
+  fs.writeFileSync(path.join(dir3, 'update-notify'), String(OWNER));
+  n = calls.length;
+  await b4.announceVersion();
+  msgs = sent(since(n), 'sendMessage');
+  assert.match(msgs[0].params.text, /כבר בגרסה האחרונה/);
+  assert.ok(!fs.existsSync(path.join(dir3, 'update-notify')), 'notify file consumed');
+
+  // a failed update that was rolled back
+  fs.writeFileSync(path.join(dir3, 'update-failed'), 'ccc');
+  n = calls.length;
+  await b4.announceVersion();
+  assert.match(sent(since(n), 'sendMessage')[0].params.text, /חזרתי לגרסה הקודמת/);
+}
+
 console.log(`OK — ${calls.length} Telegram calls, ${aiRequests.length} Claude calls. Card preview: ${path.join(dataDir, 'card.png')}`);
 server.close();
 process.exit(0);

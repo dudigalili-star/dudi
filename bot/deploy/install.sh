@@ -135,12 +135,17 @@ mkdir -p "$DATA_DIR"
 [ -n "$SKIP_SYSTEM" ] || chown -R "$RUN_USER:$RUN_USER" "$DATA_DIR"
 
 say "Settings"
-# Ask again when requested (--reset) or when a saved value is not accepted any more
-if [ -n "$RESET" ] || { [ -n "$(get_env TELEGRAM_BOT_TOKEN)" ] && ! check_token "$(get_env TELEGRAM_BOT_TOKEN)"; }; then
+# Ask again when requested (--reset) or when a saved value is not accepted any more.
+# Only when someone is at the terminal: an unattended update must never erase saved settings.
+INTERACTIVE=""
+if (: </dev/tty) 2>/dev/null; then INTERACTIVE=1; fi
+if [ -z "$INTERACTIVE" ] && [ -n "$(get_env TELEGRAM_BOT_TOKEN)" ]; then
+  : # keep everything as it is
+elif [ -n "$RESET" ] || { [ -n "$(get_env TELEGRAM_BOT_TOKEN)" ] && ! check_token "$(get_env TELEGRAM_BOT_TOKEN)"; }; then
   [ -n "$RESET" ] || echo "The saved Telegram token is not accepted by Telegram - please enter it again."
   set_env TELEGRAM_BOT_TOKEN ""
 fi
-if [ -n "$RESET" ] || { [ -n "$(get_env ANTHROPIC_API_KEY)" ] && ! check_key "$(get_env ANTHROPIC_API_KEY)"; }; then
+if [ -n "$INTERACTIVE" ] && { [ -n "$RESET" ] || { [ -n "$(get_env ANTHROPIC_API_KEY)" ] && ! check_key "$(get_env ANTHROPIC_API_KEY)"; }; }; then
   [ -n "$RESET" ] || echo "The saved Anthropic API key is not accepted - please enter it again."
   set_env ANTHROPIC_API_KEY ""
 fi
@@ -199,8 +204,44 @@ ReadWritePaths=$DATA_DIR
 [Install]
 WantedBy=multi-user.target
 EOF
+say "Installing automatic updates (every night, and /update in Telegram)"
+cat > "/etc/systemd/system/$SERVICE-update.service" <<EOF
+[Unit]
+Description=Update the Telegram bot from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=APP_DIR=$APP_DIR DATA_DIR=$DATA_DIR SERVICE=$SERVICE RUN_USER=$RUN_USER BRANCH=$BRANCH
+ExecStart=/bin/bash $APP_DIR/bot/deploy/update.sh
+EOF
+cat > "/etc/systemd/system/$SERVICE-update.timer" <<EOF
+[Unit]
+Description=Update the Telegram bot every night
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Jerusalem
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+cat > "/etc/systemd/system/$SERVICE-update.path" <<EOF
+[Unit]
+Description=Update the Telegram bot when it asks for it (/update)
+
+[Path]
+PathExists=$DATA_DIR/update-request
+
+[Install]
+WantedBy=paths.target
+EOF
+
 systemctl daemon-reload
 systemctl enable "$SERVICE" >/dev/null
+systemctl enable --now "$SERVICE-update.timer" "$SERVICE-update.path" >/dev/null
 systemctl restart "$SERVICE"
 sleep 4
 

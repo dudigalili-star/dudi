@@ -52,7 +52,7 @@ const apiRoot = `http://127.0.0.1:${server.address().port}`;
 const aiRequests = [];
 const spec = (len, extra = {}) => ({
   name: 'PIN 258', partNo: '', kind: 'turned', material: 'ST-37', finish: '', quantity: 10, notes: [],
-  questions: ['לא ברור אם הפאזה 1 או 0.5'], estimated: [],
+  questions: ['לא ברור אם הפאזה 1 או 0.5'], estimated: [], estimatedDims: ['turned.segments.0.diameter'],
   turned: { segments: [{ length: len, diameter: 20, thread: '', threadLength: 0, diaTol: '' }], chamferLeft: 1, chamferRight: 1, overallTol: '', bores: [], crossHoles: [{ diameter: 5, x: 7, thread: '' }] },
   plate: { shape: 'rect', length: 0, width: 0, thickness: 0, cornerRadius: 0, holes: [] },
   spring: { wireDiameter: 0, outerDiameter: 0, freeLength: 0, totalCoils: 0, activeCoils: 0, ends: '' },
@@ -99,6 +99,8 @@ let card = sent(since(n), 'sendPhoto')[0];
 assert.ok(card, 'card sent');
 assert.match(card.params.caption, /PIN 258/);
 assert.match(card.params.caption, /לבדוק/);
+assert.match(card.params.caption, /למדוד \(1 מידות משוערות\)/);
+assert.match(card.params.caption, /2\. קוטר: 20\?/);
 assert.match(card.params.reply_markup, /pdf:/);
 fs.writeFileSync(path.join(dataDir, 'card.png'), card.params.__raw.subarray(card.params.__raw.indexOf(Buffer.from('\x89PNG', 'latin1'))));
 assert.equal(aiRequests[0].messages[0].content[0].type, 'image');
@@ -112,6 +114,33 @@ card = sent(since(n), 'sendPhoto')[0];
 assert.match(card.params.caption, /עודכן/);
 assert.match(card.params.caption, /אורך כולל 260/);
 assert.match(aiRequests[1].messages[0].content[0].text, /"length":258/);
+
+// 3b. checklist answers are applied without the AI
+{
+  const ai0 = aiRequests.length;
+  n = calls.length;
+  await msg({ text: '1=261' });
+  card = sent(since(n), 'sendPhoto')[0];
+  assert.match(card.params.caption, /אורך כולל 261/);
+  assert.equal(aiRequests.length, ai0, 'no Claude call for "1=261"');
+  n = calls.length;
+  await msg({ text: 'אישור 2' });
+  card = sent(since(n), 'sendPhoto')[0];
+  assert.match(card.params.caption, /אושרו: 2/);
+  assert.doesNotMatch(card.params.caption, /למדוד/);
+  n = calls.length;
+  await press(`dims:${partId}`);
+  const list = sent(since(n), 'sendMessage')[0].params.text;
+  assert.match(list, /1\. אורך כולל: 261/);
+  assert.match(list, /2\. קוטר: 20/);
+  // a number answer mixed with another correction: the number is applied, the rest goes to Claude
+  n = calls.length;
+  await msg({ text: '2=21, חומר 1045' });
+  assert.equal(aiRequests.length, ai0 + 1);
+  const t = aiRequests.at(-1).messages[0].content[0].text;
+  assert.match(t, /"diameter":21/);
+  assert.match(t, /Corrections:\nחומר 1045$/);
+}
 
 // 4. buttons: PDF, STEP, DXF
 for (const [act, ext] of [['pdf', '.pdf'], ['step', '.step'], ['dxf', '.dxf']]) {
@@ -129,8 +158,8 @@ await msg({ photo, media_group_id: 'g1', caption: 'two views' });
 await msg({ photo, media_group_id: 'g1' });
 await new Promise((r) => setTimeout(r, 2200));
 await new Promise((r) => setTimeout(r, 300));
-assert.equal(aiRequests.length, 3);
-assert.equal(aiRequests[2].messages[0].content.filter((c) => c.type === 'image').length, 2);
+assert.equal(aiRequests.length, 4);
+assert.equal(aiRequests[3].messages[0].content.filter((c) => c.type === 'image').length, 2);
 
 // 6. /list and /email
 n = calls.length;

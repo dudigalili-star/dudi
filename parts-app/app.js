@@ -542,7 +542,7 @@ function bindEditor() {
   const cq = $('#btn-clear-q');
   if (cq) cq.onclick = () => { p.questions = []; saveParts(); renderEditor(); };
   const ce = $('#btn-clear-e');
-  if (ce) ce.onclick = () => { p.estimated = []; saveParts(); renderEditor(); };
+  if (ce) ce.onclick = () => { p.estimated = []; p.estimatedDims = []; saveParts(); renderEditor(); };
 
   $('#dl-pdf').onclick = () => deliver([{ name: `${fileBase(norm(p))}.pdf`, blob: pdfBlob(norm(p)) }]);
   const ds = $('#dl-step');

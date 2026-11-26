@@ -15,7 +15,7 @@ const seg = {
 
 const SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['name', 'partNo', 'kind', 'material', 'finish', 'quantity', 'notes', 'questions', 'estimated', 'turned', 'plate', 'spring'],
+  required: ['name', 'partNo', 'kind', 'material', 'finish', 'quantity', 'notes', 'questions', 'estimated', 'estimatedDims', 'turned', 'plate', 'spring'],
   properties: {
     name: { type: 'string' },
     partNo: { type: 'string' },
@@ -26,6 +26,7 @@ const SCHEMA = {
     notes: { type: 'array', items: { type: 'string' } },
     questions: { type: 'array', items: { type: 'string' } },
     estimated: { type: 'array', items: { type: 'string' } },
+    estimatedDims: { type: 'array', items: { type: 'string' }, description: 'Paths of every dimension value that was estimated, e.g. "turned.segments.1.diameter", "plate.holes.0.x"' },
     turned: {
       type: 'object', additionalProperties: false,
       required: ['segments', 'chamferLeft', 'chamferRight', 'overallTol', 'bores', 'crossHoles'],
@@ -38,12 +39,13 @@ const SCHEMA = {
           type: 'array',
           items: {
             type: 'object', additionalProperties: false,
-            required: ['end', 'diameter', 'depth', 'thread'],
+            required: ['end', 'diameter', 'depth', 'thread', 'threadDepth'],
             properties: {
               end: { type: 'string', enum: ['left', 'right'] },
               diameter: { type: 'number' },
               depth: { type: 'number', description: '0 = through' },
               thread: { type: 'string' },
+              threadDepth: { type: 'number', description: 'Usable thread depth when shorter than the bore; 0 = threaded all the way' },
             },
           },
         },
@@ -74,14 +76,19 @@ const SCHEMA = {
           type: 'array',
           items: {
             type: 'object', additionalProperties: false,
-            required: ['x', 'y', 'diameter', 'thread', 'depth', 'tol'],
+            required: ['x', 'y', 'diameter', 'thread', 'depth', 'tol', 'threadDepth', 'cboreDia', 'cboreDepth', 'csinkDia', 'csinkAngle'],
             properties: {
               x: { type: 'number', description: 'From the LEFT edge to the hole center' },
               y: { type: 'number', description: 'From the BOTTOM edge to the hole center' },
-              diameter: { type: 'number' },
+              diameter: { type: 'number', description: 'Drill diameter; for a tapped hole the nominal thread size (8 for M8)' },
               thread: { type: 'string' },
-              depth: { type: 'number', description: '0 = through' },
+              depth: { type: 'number', description: 'Drill depth; 0 = through' },
               tol: { type: 'string' },
+              threadDepth: { type: 'number', description: 'Usable thread depth when shorter than the hole; 0 = threaded all the way' },
+              cboreDia: { type: 'number', description: 'Counterbore diameter (socket-head screw pocket); 0 = none' },
+              cboreDepth: { type: 'number', description: 'Counterbore depth; 0 if none' },
+              csinkDia: { type: 'number', description: 'Countersink outer diameter (flat-head screw); 0 = none' },
+              csinkAngle: { type: 'number', description: 'Countersink included angle, usually 90; 0 if none' },
             },
           },
         },
@@ -123,7 +130,12 @@ Other fields:
 - quantity: number of pieces if given, else 0.
 - notes: short English manufacturing notes that must appear on the drawing (welding, press fit, hardness, surface roughness...). Only what is specific to this part. The drawing already has standard notes for: dimensions in mm, general tolerances ISO 2768-m, deburr/break sharp edges, chamfers, material, finish and quantity — never repeat those. Empty if nothing special.
 - questions: in HEBREW, everything that is ambiguous or missing and that the supplier would ask about (unclear digit, missing chamfer size, hole reference point, thread pitch, which way a step faces, tolerance on a fit). Be specific. Empty if everything is clear.
-- estimated: in HEBREW, list of dimensions you estimated rather than read.`;
+- estimated: in HEBREW, list of dimensions you estimated rather than read.
+- estimatedDims: the same estimated dimensions as machine paths into your output, so the user can be asked to measure exactly those. Paths: "turned.segments.<i>.length|diameter|threadLength", "turned.chamferLeft", "turned.chamferRight", "turned.bores.<i>.diameter|depth|threadDepth", "turned.crossHoles.<i>.x|diameter", "plate.length|width|thickness|cornerRadius", "plate.holes.<i>.x|y|diameter|depth|threadDepth|cboreDia|cboreDepth|csinkDia", "spring.wireDiameter|outerDiameter|freeLength|totalCoils|activeCoils" (i counts from 0). Include a path for every value you did not read from written numbers or the user's text. Empty when everything was given.
+
+Holes and threads — read them like a machinist:
+- Tapped holes: thread "M8" (add pitch only if fine, e.g. "M8x1"), diameter = nominal size, depth = drill depth (0 = through), threadDepth = usable thread depth if shorter than the hole.
+- A stepped hole for a socket-head screw is a counterbore (cboreDia, cboreDepth); a cone for a flat-head screw is a countersink (csinkDia, csinkAngle 90). Typical for M6: Ø6.6 / CBORE Ø11 x 6.5, CSK Ø13; M8: Ø9 / CBORE Ø15 x 8.6, CSK Ø17 — estimate from these when only the screw size is known, and list them as estimated.`;
 
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
@@ -142,7 +154,8 @@ export async function analyzeImages({ Anthropic, apiKey, model = DEFAULT_MODEL, 
     const { id, imageIds, createdAt, fullSet, ...spec } = current;
     text = `This is the current specification of the part:\n${JSON.stringify(spec)}\n\n`
       + `Apply my corrections below and return the complete updated specification. Keep everything I did not mention unchanged. `
-      + `Remove questions and estimates that my corrections answer.\n\nCorrections:\n${userText}`;
+      + `Remove questions and estimates that my corrections answer, and remove their paths from "estimatedDims" `
+      + `(keep the paths of the other estimated values, re-indexed if you add or remove items).\n\nCorrections:\n${userText}`;
   } else {
     text = (userText ? `Additional information from me (overrides the image):\n${userText}\n\n` : '')
       + (images.length ? 'Produce the part specification.' : 'There is no image; produce the part specification from my description.');

@@ -44,6 +44,7 @@ export function newPart(kind = 'turned') {
     notes: [],
     questions: [],
     estimated: [],
+    estimatedDims: [], // keys from dimensionList() whose value is a guess, not read or measured
     fullSet: null, // null = automatic (see isComplex)
     turned: { segments: [{ length: 100, diameter: 20, thread: '', threadLength: 0, diaTol: '' }], chamferLeft: 1, chamferRight: 1, overallTol: '', bores: [], crossHoles: [] },
     plate: { shape: 'rect', length: 100, width: 50, thickness: 10, cornerRadius: 0, lengthTol: '', widthTol: '', thicknessTol: '', holes: [] },
@@ -76,6 +77,7 @@ export function normalizePart(input) {
   p.notes = arr(p.notes).map(str).filter(Boolean);
   p.questions = arr(p.questions).map(str).filter(Boolean);
   p.estimated = arr(p.estimated).map(str).filter(Boolean);
+  p.estimatedDims = [...new Set(arr(p.estimatedDims).map(str).filter(Boolean))];
   p.imageIds = arr(p.imageIds).map(str).filter(Boolean);
   p.fullSet = p.fullSet === true || p.fullSet === false ? p.fullSet : null;
 
@@ -96,6 +98,7 @@ export function normalizePart(input) {
     diameter: Math.max(0, num(b.diameter)),
     depth: Math.max(0, num(b.depth)), // 0 = through
     thread: str(b.thread),
+    threadDepth: Math.max(0, num(b.threadDepth)), // 0 = threaded over the whole bore
   })).filter((b) => b.diameter > 0);
   t.crossHoles = arr(t.crossHoles).map((h) => ({
     diameter: Math.max(0, num(h.diameter)),
@@ -120,7 +123,16 @@ export function normalizePart(input) {
     thread: str(h.thread),
     depth: Math.max(0, num(h.depth)), // 0 = through
     tol: str(h.tol),
+    threadDepth: Math.max(0, num(h.threadDepth)), // 0 = threaded over the whole hole
+    cboreDia: Math.max(0, num(h.cboreDia)), // counterbore (0 = none)
+    cboreDepth: Math.max(0, num(h.cboreDepth)),
+    csinkDia: Math.max(0, num(h.csinkDia)), // countersink (0 = none)
+    csinkAngle: num(h.csinkAngle) > 0 ? num(h.csinkAngle) : 90,
   })).filter((h) => h.diameter > 0);
+  pl.holes.forEach((h) => {
+    if (h.cboreDia <= h.diameter) { h.cboreDia = 0; h.cboreDepth = 0; }
+    if (h.csinkDia <= h.diameter) h.csinkDia = 0;
+  });
   p.plate = pl;
 
   const sp = { ...base.spring, ...(input?.spring || {}) };
@@ -132,6 +144,8 @@ export function normalizePart(input) {
   sp.ends = str(sp.ends) || 'Closed and ground';
   sp.direction = str(sp.direction) || 'Right hand';
   p.spring = sp;
+  const valid = new Set(dimensionList(p).flatMap((d) => d.keys));
+  p.estimatedDims = p.estimatedDims.filter((k) => valid.has(k));
   return p;
 }
 
@@ -210,4 +224,183 @@ export function warnings(p) {
     if (s.wireDiameter * s.totalCoils > s.freeLength) w.push('האורך החופשי קצר מגובה הכריכות הצמודות (Solid length)');
   }
   return w;
+}
+
+/* ───────────── numbered dimension list (the measuring checklist) ───────────── */
+
+// Holes that are drawn and called out together ("4x Ø8 THRU") are one group.
+export function plateHoleGroup(h) {
+  return [h.diameter, h.thread, h.depth, h.tol, h.threadDepth, h.cboreDia, h.cboreDepth, h.csinkDia, h.csinkAngle].join('|');
+}
+export function crossHoleGroup(h) {
+  return `${h.diameter}|${h.thread}`;
+}
+
+// Many holes are dimensioned with a hole table (tags + X/Y table) instead of ordinate dimensions.
+export function useHoleTable(p) {
+  const hs = p.plate.holes;
+  return hs.length > 6 || new Set(hs.map((h) => h.x)).size > 5 || new Set(hs.map((h) => h.y)).size > 5;
+}
+
+// Hole tags for the hole table: one letter per group, numbered within the group (A1, A2, B1…).
+export function plateHoleTags(p) {
+  const groups = [];
+  return p.plate.holes.map((h) => {
+    const g = plateHoleGroup(h);
+    let gi = groups.indexOf(g);
+    if (gi < 0) { groups.push(g); gi = groups.length - 1; }
+    const n = p.plate.holes.slice(0, p.plate.holes.indexOf(h) + 1).filter((q) => plateHoleGroup(q) === g).length;
+    return `${String.fromCharCode(65 + (gi % 26))}${n}`;
+  });
+}
+
+const holeSize = (h) => h.thread || `Ø${fmt(h.diameter)}`;
+
+// Every dimension that sets the size of the part, numbered the same way in the chat and on the preview.
+// keys: paths into the part (a dimension shared by a group of holes has one key per hole).
+export function dimensionList(p) {
+  const out = [];
+  const add = (keys, label, value) => out.push({ n: out.length + 1, keys: [].concat(keys), label, value });
+  if (p.kind === 'turned') {
+    const t = p.turned;
+    const many = t.segments.length > 1;
+    t.segments.forEach((g, i) => {
+      const nm = many ? `מקטע ${i + 1}: ` : '';
+      add(`turned.segments.${i}.length`, many ? `${nm}אורך` : 'אורך כולל', g.length);
+      add(`turned.segments.${i}.diameter`, g.thread ? `${nm}קוטר הברגה ${g.thread}` : `${nm}קוטר`, g.diameter);
+      if (g.thread && g.threadLength > 0) add(`turned.segments.${i}.threadLength`, `${nm}אורך הברגה`, g.threadLength);
+    });
+    if (t.chamferLeft > 0) add('turned.chamferLeft', 'פאזה בקצה השמאלי', t.chamferLeft);
+    if (t.chamferRight > 0) add('turned.chamferRight', 'פאזה בקצה הימני', t.chamferRight);
+    t.bores.forEach((b, i) => {
+      const nm = `קדח ${b.end === 'left' ? 'משמאל' : 'מימין'}${t.bores.length > 1 ? ` ${i + 1}` : ''}`;
+      add(`turned.bores.${i}.diameter`, `${nm}: ${b.thread ? `קוטר (${b.thread})` : 'קוטר'}`, b.diameter);
+      if (b.depth > 0) add(`turned.bores.${i}.depth`, `${nm}: עומק`, b.depth);
+      if (b.thread && b.threadDepth > 0) add(`turned.bores.${i}.threadDepth`, `${nm}: עומק הברגה`, b.threadDepth);
+    });
+    const seen = new Map();
+    t.crossHoles.forEach((h, i) => {
+      const g = crossHoleGroup(h);
+      if (!seen.has(g)) seen.set(g, []);
+      seen.get(g).push(i);
+    });
+    seen.forEach((idx) => {
+      const h = t.crossHoles[idx[0]];
+      add(idx.map((i) => `turned.crossHoles.${i}.diameter`), `חור רוחבי ${holeSize(h)}${idx.length > 1 ? ` (${idx.length} חורים)` : ''}: קוטר`, h.diameter);
+    });
+    [...t.crossHoles.keys()].sort((a, b) => t.crossHoles[a].x - t.crossHoles[b].x).forEach((i) => {
+      add(`turned.crossHoles.${i}.x`, `חור רוחבי ${holeSize(t.crossHoles[i])}: מרחק מהקצה השמאלי`, t.crossHoles[i].x);
+    });
+  } else if (p.kind === 'plate') {
+    const pl = p.plate;
+    if (pl.shape === 'disc') add('plate.length', 'קוטר חיצוני', pl.length);
+    else {
+      add('plate.length', 'אורך', pl.length);
+      add('plate.width', 'רוחב', pl.width);
+    }
+    add('plate.thickness', 'עובי', pl.thickness);
+    if (pl.shape === 'rect' && pl.cornerRadius > 0) add('plate.cornerRadius', 'רדיוס פינות', pl.cornerRadius);
+    const table = useHoleTable(p);
+    const tags = plateHoleTags(p);
+    const groups = new Map();
+    pl.holes.forEach((h, i) => {
+      const g = plateHoleGroup(h);
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(i);
+    });
+    groups.forEach((idx) => {
+      const h = pl.holes[idx[0]];
+      const nm = `${table ? `חורים ${tags[idx[0]][0]}` : 'חור'} ${holeSize(h)}${idx.length > 1 ? ` (${idx.length})` : ''}`;
+      const keys = (f) => idx.map((i) => `plate.holes.${i}.${f}`);
+      add(keys('diameter'), `${nm}: קוטר`, h.diameter);
+      if (h.depth > 0) add(keys('depth'), `${nm}: עומק`, h.depth);
+      if (h.thread && h.threadDepth > 0) add(keys('threadDepth'), `${nm}: עומק הברגה`, h.threadDepth);
+      if (h.cboreDia > 0) {
+        add(keys('cboreDia'), `${nm}: קוטר שקיעה`, h.cboreDia);
+        add(keys('cboreDepth'), `${nm}: עומק שקיעה`, h.cboreDepth);
+      }
+      if (h.csinkDia > 0) add(keys('csinkDia'), `${nm}: קוטר שקיעה קונית`, h.csinkDia);
+    });
+    // positions: per hole in a hole table, otherwise one per distinct X / Y (as dimensioned on the drawing)
+    const placed = [...pl.holes.keys()].filter((i) => !(pl.shape === 'disc' && Math.abs(pl.holes[i].x - pl.length / 2) < 1e-6 && Math.abs(pl.holes[i].y - pl.width / 2) < 1e-6));
+    if (table) {
+      placed.forEach((i) => {
+        add(`plate.holes.${i}.x`, `חור ${tags[i]}: X מהקצה השמאלי`, pl.holes[i].x);
+        add(`plate.holes.${i}.y`, `חור ${tags[i]}: Y מהקצה התחתון`, pl.holes[i].y);
+      });
+    } else {
+      for (const [axis, from] of [['x', 'מהקצה השמאלי'], ['y', 'מהקצה התחתון']]) {
+        const vals = [...new Set(placed.map((i) => pl.holes[i][axis]))].sort((a, b) => a - b);
+        vals.forEach((v) => {
+          const idx = placed.filter((i) => pl.holes[i][axis] === v);
+          add(idx.map((i) => `plate.holes.${i}.${axis}`), `מיקום חור${idx.length > 1 ? 'ים' : ''} ${axis.toUpperCase()} ${from}`, v);
+        });
+      }
+    }
+  } else if (p.kind === 'spring') {
+    const s = p.spring;
+    add('spring.wireDiameter', 'קוטר תיל', s.wireDiameter);
+    add('spring.outerDiameter', 'קוטר חיצוני', s.outerDiameter);
+    add('spring.freeLength', 'אורך חופשי', s.freeLength);
+    add('spring.totalCoils', 'כריכות סה"כ', s.totalCoils);
+    add('spring.activeCoils', 'כריכות פעילות', s.activeCoils);
+  }
+  const est = new Set(p.estimatedDims || []);
+  out.forEach((d) => { d.estimated = d.keys.some((k) => est.has(k)); });
+  return out;
+}
+
+function setPath(obj, key, value) {
+  const parts = key.split('.');
+  let o = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    o = o?.[parts[i]];
+    if (o == null) return false;
+  }
+  if (typeof o[parts.at(-1)] !== 'number') return false;
+  o[parts.at(-1)] = value;
+  return true;
+}
+
+const CONFIRM_ALL = /(אשר|אישור|מאשר)\s*(את\s*)?(ה)?כל|הכל\s*(נכון|תקין|מאושר|בסדר)|all\s*ok|confirm\s*all/i;
+const CONFIRM_SOME = /(?:^|[\s,;])(?:אשר|אישור|מאשר|נכון|ok|✓|✔)\s*:?\s*((?:\d{1,3}(?:\s*[,\s]\s*|\s*ו\s*|\s*-\s*)?)+)/gi;
+const ASSIGN = /(?:^|[\s,;(])(\d{1,3})\s*=\s*(\d+(?:[.,]\d+)?)(?=$|[\s,;)])/g;
+
+// Answers to the checklist, handled locally (no AI): "3=8.5", "אישור 1 2 5", "אשר הכל".
+// Returns the updated part, what changed, and the rest of the message (for the AI), or null if nothing matched.
+export function applyDimAnswers(part, text) {
+  const list = dimensionList(part);
+  const p = JSON.parse(JSON.stringify(part));
+  const est = new Set(p.estimatedDims);
+  const set = [], confirmed = [];
+  let rest = String(text);
+  rest = rest.replace(ASSIGN, (m, n, v) => {
+    const d = list[Number(n) - 1];
+    if (!d) return m;
+    const val = parseFloat(v.replace(',', '.'));
+    d.keys.forEach((k) => { setPath(p, k, val); est.delete(k); });
+    set.push({ ...d, value: val });
+    return ' ';
+  });
+  rest = rest.replace(CONFIRM_SOME, (m, nums) => {
+    const ns = [];
+    for (const r of nums.matchAll(/(\d{1,3})(?:\s*-\s*(\d{1,3}))?/g)) {
+      const a = Number(r[1]), b = r[2] ? Number(r[2]) : a;
+      for (let i = Math.min(a, b); i <= Math.max(a, b) && i - Math.min(a, b) < 200; i++) ns.push(i);
+    }
+    const hit = ns.map((i) => list[i - 1]).filter(Boolean);
+    if (!hit.length) return m;
+    hit.forEach((d) => { d.keys.forEach((k) => est.delete(k)); confirmed.push(d); });
+    return ' ';
+  });
+  if (CONFIRM_ALL.test(rest)) {
+    list.filter((d) => d.estimated).forEach((d) => confirmed.push(d));
+    est.clear();
+    rest = rest.replace(CONFIRM_ALL, ' ');
+  }
+  if (!set.length && !confirmed.length) return null;
+  p.estimatedDims = [...est];
+  rest = rest.replace(/^[\s,;.\-–ו]+|[\s,;.\-–]+$/g, '').replace(/\s{2,}/g, ' ');
+  if (!/[\p{L}\d]/u.test(rest)) rest = '';
+  return { part: normalizePart(p), set, confirmed, rest };
 }

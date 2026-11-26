@@ -81,6 +81,19 @@ function plateSolid(R, p) {
     // blind holes start at the top face
     const z0 = h.depth > 0 ? T - depth : -1;
     solid = solid.cut(R.makeCylinder(d / 2, depth + (h.depth > 0 ? 1 : 0), [h.x, h.y, z0], [0, 0, 1]));
+    // counterbore / countersink from the top face (the side the hole is drilled from)
+    if (h.cboreDia > 0 && h.cboreDepth > 0) {
+      const cd = Math.min(h.cboreDepth, T);
+      solid = solid.cut(R.makeCylinder(h.cboreDia / 2, cd + 1, [h.x, h.y, T - cd], [0, 0, 1]));
+    }
+    if (h.csinkDia > 0) {
+      const k = Math.tan((h.csinkAngle / 2) * Math.PI / 180);
+      const rc = h.csinkDia / 2;
+      const apex = T - rc / k;
+      const cone = R.draw([0, apex]).lineTo([rc + k, T + 1]).lineTo([0, T + 1]).close()
+        .sketchOnPlane('XZ', [h.x, h.y, 0]).revolve([0, 0, 1], { origin: [h.x, h.y, 0] });
+      solid = solid.cut(cone);
+    }
   });
   return solid;
 }

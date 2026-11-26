@@ -11,6 +11,7 @@ import { Resvg } from '@resvg/resvg-js';
 
 import {
   normalizePart, warnings, wantsFullSet, canMake3D, isComplex, displayName, fileBase, overallLength, fmt, KINDS,
+  dimensionList, applyDimAnswers,
 } from '../parts-app/core/model.js';
 import { buildDrawing, buildViews11, SHEET_W, SHEET_H } from '../parts-app/core/drawing.js';
 import { toSVG, toPDF, toDXF } from '../parts-app/core/render.js';
@@ -27,6 +28,9 @@ const HELP = `📐 *בוט שרטוטים לספק*
 אני מחזיר שרטוט מסודר (PDF, ולחלק מורכב גם STEP ו-DXF).
 
 ✏️ *תיקונים:* פשוט כתוב הודעה, למשל _"האורך 260, חומר 1045"_. היא תחול על החלק האחרון שעבדנו עליו.
+
+📏 *מידות:* לכל מידה בתמונה יש מספר בעיגול. מידה משוערת מסומנת ב-? ובעיגול מודגש.
+מודדים וכותבים למשל _5=24.8_ (אפשר כמה: _5=24.8 7=8.5_), _אישור 3 4_ למידה שנכונה, או _אשר הכל_.
 
 פקודות:
 /new — החלק הבא שאכתוב בטקסט יהיה חלק חדש
@@ -104,10 +108,25 @@ export function partSummary(p) {
   L.push(`כמות: ${p.quantity || '—'}`);
   L.push(`קבצים: ${wantsFullSet(p) ? 'סט מלא (PDF + STEP + DXF)' : 'PDF'}`);
   const w = warnings(p);
-  if (p.estimated.length) L.push('', '📏 *הוערך מהתמונה:*', ...p.estimated.map((x) => `• ${md(x)}`));
+  const est = dimensionList(p).filter((d) => d.estimated);
+  if (est.length) {
+    L.push('', `📏 *למדוד (${est.length} מידות משוערות):*`, ...est.slice(0, 12).map((d) => `${d.n}. ${md(d.label)}: ${fmt(d.value)}?`));
+    if (est.length > 12) L.push(`…ועוד ${est.length - 12} (כפתור "כל המידות")`);
+    L.push(`_ענה למשל ${est[0].n}=${fmt(est[0].value)}, או "אישור ${est[0].n}"_`);
+  } else if (p.estimated.length) L.push('', '📏 *הוערך מהתמונה:*', ...p.estimated.map((x) => `• ${md(x)}`));
   if (p.questions.length) L.push('', '❓ *לבדוק:*', ...p.questions.map((x) => `• ${md(x)}`));
   if (w.length) L.push('', '⚠️ ' + w.map(md).join('\n⚠️ '));
   L.push('', '_לתיקון — פשוט כתוב הודעה_');
+  return L.join('\n');
+}
+
+// The full numbered list of dimensions (the same numbers as the balloons on the preview).
+export function dimensionsText(p) {
+  const list = dimensionList(p);
+  if (!list.length) return 'אין מידות לחלק הזה.';
+  const L = [`📋 *מידות — ${md(displayName(p))}*`, ''];
+  list.forEach((d) => L.push(`${d.n}. ${md(d.label)}: ${d.estimated ? `*${fmt(d.value)}?* (משוער)` : fmt(d.value)}`));
+  L.push('', '_לתיקון: 5=24.8 · לאישור: אישור 3 4 · הכל נכון: אשר הכל_');
   return L.join('\n');
 }
 
@@ -117,7 +136,7 @@ function partKeyboard(p) {
     kb.text('🧊 STEP', `step:${p.id}`).text('📐 DXF', `dxf:${p.id}`).row();
     kb.text(wantsFullSet(p) ? '✅ סט מלא במייל' : '⬜ סט מלא במייל', `full:${p.id}`);
   }
-  kb.text('🗑 הסר', `del:${p.id}`).row();
+  kb.text('📋 כל המידות', `dims:${p.id}`).text('🗑 הסר', `del:${p.id}`).row();
   kb.text('✉️ מייל + ZIP לכל הבקשה', 'email');
   return kb;
 }
@@ -217,13 +236,14 @@ export function createBot({
   async function drawingFor(p) {
     return buildDrawing(p, { drawnBy, image: await drawingImageFor(p) });
   }
+  // the chat preview has numbered balloons; the PDF / DXF for the supplier stay clean
   async function sheetFor(p) {
     return (await drawingFor(p)).sheet;
   }
   // Chat preview: only the views and their dimensions, so they are readable on a phone.
   // (The full A4 sheet with notes and title block is in the PDF.)
   async function pngFor(p) {
-    const { sheet, views } = await drawingFor(p);
+    const { sheet, views } = buildDrawing(p, { drawnBy, image: await drawingImageFor(p), tags: true });
     let svg;
     if (views && views.w > 0 && views.h > 0) {
       const m = 6;
@@ -384,12 +404,33 @@ export function createBot({
     const s = await store.get(ctx.chat.id);
     const i = s.parts.findIndex((x) => x.id === s.currentId);
     if (i < 0) return createPart(ctx, [], text);
+    // checklist answers ("5=24.8", "אישור 3 4", "אשר הכל") are applied here, without the AI
+    const ans = applyDimAnswers(normalizePart(s.parts[i]), text);
+    if (ans) {
+      const p = { ...ans.part, fullSet: s.parts[i].fullSet ?? null };
+      s.parts[i] = p;
+      await store.save(ctx.chat.id);
+      const done = [
+        ...ans.set.map((d) => `${d.n}. ${d.label} = ${fmt(d.value)}`),
+        ...(ans.confirmed.length ? [`אושרו: ${ans.confirmed.map((d) => d.n).join(', ')}`] : []),
+      ];
+      if (!ans.rest) {
+        await withTyping(ctx, () => sendCard(ctx, normalizePart(p), `✏️ עודכן\n${done.map(md).join('\n')}`)).catch((e) => fail(ctx, e));
+        return;
+      }
+      text = ans.rest;
+    }
     const client = await getClient();
     if (!client) return ctx.reply(NEED_KEY, { parse_mode: 'Markdown' });
     await withTyping(ctx, async () => {
       const cur = normalizePart(s.parts[i]);
       const spec = await analyzeImages({ client, model, userText: text, current: cur });
       const p = normalizePart({ ...spec, id: cur.id, imageIds: cur.imageIds, createdAt: cur.createdAt, fullSet: cur.fullSet });
+      // a dimension the user set by number stays confirmed even if the AI re-lists it
+      if (ans) {
+        const done = new Set([...ans.set, ...ans.confirmed].flatMap((d) => d.keys));
+        p.estimatedDims = p.estimatedDims.filter((k) => !done.has(k));
+      }
       s.parts[i] = p;
       await store.save(ctx.chat.id);
       await sendCard(ctx, p, '✏️ עודכן');
@@ -414,11 +455,12 @@ export function createBot({
       const subject = emailSubject();
       const body = emailBody(list, { supplierName, signature });
       const missing = list.filter((p) => !p.quantity).map(displayName);
+      const guessed = list.map((p) => [displayName(p), dimensionList(p).filter((d) => d.estimated).length]).filter(([, n]) => n);
       const d = new Date();
       const zipName = `Quotation ${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}.zip`;
       await ctx.replyWithDocument(new InputFile(buf, zipName), { caption: `📎 ${attachmentList(list).join(', ')}`.slice(0, 1000) });
       const kb = new InlineKeyboard().url('פתח טיוטה ב-Gmail', gmailComposeUrl(supplierEmail, subject, body));
-      await ctx.reply(`*אל:* ${md(supplierEmail)}\n*נושא:* ${md(subject)}\n\n${md(body)}${missing.length ? `\n\n⚠️ חסרה כמות: ${missing.map(md).join(', ')}` : ''}\n\n_צרף את הקבצים מה-ZIP למייל._`, { parse_mode: 'Markdown', reply_markup: kb });
+      await ctx.reply(`*אל:* ${md(supplierEmail)}\n*נושא:* ${md(subject)}\n\n${md(body)}${missing.length ? `\n\n⚠️ חסרה כמות: ${missing.map(md).join(', ')}` : ''}${guessed.length ? `\n\n⚠️ מידות משוערות שעוד לא אושרו: ${guessed.map(([nm, n]) => `${md(nm)} (${n})`).join(', ')}` : ''}\n\n_צרף את הקבצים מה-ZIP למייל._`, { parse_mode: 'Markdown', reply_markup: kb });
     }).catch((e) => fail(ctx, e));
   }
 
@@ -527,6 +569,10 @@ export function createBot({
         await store.save(chatId);
         await ctx.answerCallbackQuery({ text: 'הוסר מהבקשה' });
         return ctx.reply(`🗑 ${displayName(p)} הוסר. נשארו ${s.parts.length} חלקים.`);
+      }
+      if (act === 'dims') {
+        await ctx.answerCallbackQuery();
+        return ctx.reply(dimensionsText(p), { parse_mode: 'Markdown' });
       }
       if (act === 'sel') {
         s.currentId = id;

@@ -1,6 +1,6 @@
 // Builds a 2D engineering drawing (A4 landscape, mm, y pointing down) as a list of
 // simple primitives. The same primitives are rendered to SVG (preview), PDF and DXF.
-import { overallLength, fmt, displayName } from './model.js';
+import { overallLength, fmt, displayName, dimensionList, plateHoleGroup, crossHoleGroup, useHoleTable, plateHoleTags } from './model.js';
 
 export const SHEET_W = 297;
 export const SHEET_H = 210;
@@ -11,14 +11,30 @@ const DIM_H = 3; // dimension text height
 const SCALES = [10, 5, 2, 1, 0.5, 0.4, 0.2, 0.1, 0.05];
 
 export class Sheet {
-  constructor() { this.prims = []; }
+  // tags: optional {key: {n, estimated}} — numbered balloons next to dimension texts (chat preview only)
+  constructor(tags = null) { this.prims = []; this.tags = tags; }
   line(x1, y1, x2, y2, s = 'thick') { this.prims.push({ t: 'line', x1, y1, x2, y2, s }); }
   circle(cx, cy, r, s = 'thick') { this.prims.push({ t: 'circle', cx, cy, r, s }); }
   // a1→a2 in degrees, counter-clockwise as seen on paper.
   arc(cx, cy, r, a1, a2, s = 'thick') { this.prims.push({ t: 'arc', cx, cy, r, a1, a2, s }); }
   poly(pts, { closed = false, fill = false, s = 'thin' } = {}) { this.prims.push({ t: 'poly', pts, closed, fill, s }); }
-  text(x, y, text, { h = 3.5, anchor = 'start', rot = 0, bold = false } = {}) {
-    this.prims.push({ t: 'text', x, y, text: String(text), h, anchor, rot, bold });
+  text(x, y, text, { h = 3.5, anchor = 'start', rot = 0, bold = false, tag = null } = {}) {
+    const tags = this.tags && tag ? [...new Set([].concat(tag).map((k) => this.tags[k]).filter(Boolean))] : [];
+    const est = tags.some((d) => d.estimated);
+    const str = String(text) + (est ? ' ?' : '');
+    this.prims.push({ t: 'text', x, y, text: str, h, anchor, rot, bold });
+    if (!tags.length) return;
+    // balloons after the end of the text
+    const w = String(str).length * h * 0.6;
+    const R = 2.1;
+    tags.forEach((d, i) => {
+      const off = w * (anchor === 'middle' ? 0.5 : anchor === 'end' ? 0 : 1) + R + (rot ? 1.8 : 0.8) + i * (2 * R + 0.6);
+      const cx = rot ? x - h * 0.35 : x + off;
+      const cy = rot ? y - off : y - h * 0.35;
+      this.circle(cx, cy, R, d.estimated ? 'thick' : 'thin');
+      const label = String(d.n);
+      this.prims.push({ t: 'text', x: cx, y: cy + 0.85, text: label, h: label.length > 1 ? 2.1 : 2.4, anchor: 'middle', rot: 0, bold: d.estimated });
+    });
   }
   image(x, y, w, h, src) { this.prims.push({ t: 'image', x, y, w, h, src }); }
   rect(x, y, w, h, s = 'thin') { this.poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], { closed: true, s }); }
@@ -27,6 +43,11 @@ export class Sheet {
 export function textWidth(text, h) {
   return String(text).length * h * 0.56;
 }
+
+// A dimension label is a string, or {text, key} where key (or a list of keys) names the
+// dimension in dimensionList() — used for the numbered balloons on the chat preview.
+const lab = (l) => (l && typeof l === 'object' ? l : { text: String(l), key: null });
+const K = (key, text) => ({ text, key });
 
 function arrow(S, tipX, tipY, dx, dy) {
   // dx,dy: unit vector pointing from the tip back along the line
@@ -44,8 +65,9 @@ export function hDim(S, xA, yA, xB, yB, yLine, label) {
     S.line(x, y + dir * 1, x, yLine + dir * 1.5, 'thin');
   };
   ext(xA, yA); ext(xB, yB);
+  const { text, key } = lab(label);
   const len = xB - xA;
-  const tw = textWidth(label, DIM_H);
+  const tw = textWidth(text, DIM_H);
   if (len >= ARROW_L * 2 + 1) {
     S.line(xA, yLine, xB, yLine, 'thin');
     arrow(S, xA, yLine, 1, 0); arrow(S, xB, yLine, -1, 0);
@@ -53,8 +75,8 @@ export function hDim(S, xA, yA, xB, yB, yLine, label) {
     S.line(xA - ARROW_L - 3, yLine, xB + ARROW_L + 3, yLine, 'thin');
     arrow(S, xA, yLine, -1, 0); arrow(S, xB, yLine, 1, 0);
   }
-  if (tw + 2 < len) S.text((xA + xB) / 2, yLine - 0.9, label, { h: DIM_H, anchor: 'middle' });
-  else S.text(xB + ARROW_L + 4, yLine - 0.9, label, { h: DIM_H, anchor: 'start' });
+  if (tw + 2 < len) S.text((xA + xB) / 2, yLine - 0.9, text, { h: DIM_H, anchor: 'middle', tag: key });
+  else S.text(xB + ARROW_L + 4, yLine - 0.9, text, { h: DIM_H, anchor: 'start', tag: key });
 }
 
 // Vertical dimension at x = xLine between paper y's yA,yB (points at xA / xB).
@@ -65,8 +87,9 @@ export function vDim(S, xA, yA, xB, yB, xLine, label) {
     S.line(x + dir * 1, y, xLine + dir * 1.5, y, 'thin');
   };
   ext(xA, yA); ext(xB, yB);
+  const { text, key } = lab(label);
   const len = yB - yA;
-  const tw = textWidth(label, DIM_H);
+  const tw = textWidth(text, DIM_H);
   if (len >= ARROW_L * 2 + 1) {
     S.line(xLine, yA, xLine, yB, 'thin');
     arrow(S, xLine, yA, 0, 1); arrow(S, xLine, yB, 0, -1);
@@ -74,8 +97,8 @@ export function vDim(S, xA, yA, xB, yB, xLine, label) {
     S.line(xLine, yA - ARROW_L - 3, xLine, yB + ARROW_L + 3, 'thin');
     arrow(S, xLine, yA, 0, -1); arrow(S, xLine, yB, 0, 1);
   }
-  if (tw + 2 < len) S.text(xLine - 0.9, (yA + yB) / 2, label, { h: DIM_H, anchor: 'middle', rot: 90 });
-  else S.text(xLine - 0.9, yA - ARROW_L - 4, label, { h: DIM_H, anchor: 'start', rot: 90 });
+  if (tw + 2 < len) S.text(xLine - 0.9, (yA + yB) / 2, text, { h: DIM_H, anchor: 'middle', rot: 90, tag: key });
+  else S.text(xLine - 0.9, yA - ARROW_L - 4, text, { h: DIM_H, anchor: 'start', rot: 90, tag: key });
 }
 
 // Dimension drawn inside a feature (e.g. a diameter across a shaft step), arrows touching the edges.
@@ -83,19 +106,30 @@ function innerVDim(S, x, yA, yB, label) {
   S.line(x, yA, x, yB, 'thin');
   arrow(S, x, yA, 0, 1); arrow(S, x, yB, 0, -1);
   const len = Math.abs(yB - yA);
-  if (textWidth(label, DIM_H) + 2 < len) S.text(x - 0.9, (yA + yB) / 2, label, { h: DIM_H, anchor: 'middle', rot: 90 });
-  else S.text(x - 0.9, Math.min(yA, yB) - 2, label, { h: DIM_H, anchor: 'start', rot: 90 });
+  const { text, key } = lab(label);
+  if (textWidth(text, DIM_H) + 2 < len) S.text(x - 0.9, (yA + yB) / 2, text, { h: DIM_H, anchor: 'middle', rot: 90, tag: key });
+  else S.text(x - 0.9, Math.min(yA, yB) - 2, text, { h: DIM_H, anchor: 'start', rot: 90, tag: key });
 }
 
+// Leader with a callout; a callout may have several lines (\n), the first one sits on the shoulder.
+// key: one key / list of keys, or a list per line ([[k1], [k2, k3]]).
 function leader(S, x, y, label, dx = 8, dy = -8) {
   const ex = x + dx, ey = y + dy;
   const ang = Math.atan2(y - ey, x - ex);
   S.line(ex, ey, x, y, 'thin');
   arrow(S, x, y, -Math.cos(ang), -Math.sin(ang));
-  const tw = textWidth(label, DIM_H);
+  const { text, key } = lab(label);
+  const lines = text.split('\n');
+  const perLine = Array.isArray(key) && key.some(Array.isArray);
+  const tw = Math.max(...lines.map((l) => textWidth(l, DIM_H)));
   const right = dx >= 0;
   S.line(ex, ey, ex + (right ? tw + 1 : -tw - 1), ey, 'thin');
-  S.text(ex + (right ? 0.5 : -0.5), ey - 0.8, label, { h: DIM_H, anchor: right ? 'start' : 'end' });
+  lines.forEach((l, i) => S.text(ex + (right ? 0.5 : -0.5), ey - 0.8 + i * (DIM_H + 1.3), l, {
+    h: DIM_H, anchor: right ? 'start' : 'end', tag: perLine ? key[i] : i === 0 ? key : null,
+  }));
+}
+function leaderLines(label) {
+  return lab(label).text.split('\n').length;
 }
 
 function centerMark(S, cx, cy, r) {
@@ -117,11 +151,35 @@ export function threadInfo(spec, fallbackDia) {
 
 const withTol = (label, tol) => (tol ? `${label} ${tol}` : label);
 
+// Thread callout with the ISO tolerance class (6H inside, 6g outside) unless one is given.
+export function threadCallout(spec, internal) {
+  const s = String(spec || '').trim();
+  if (!/^M\s*\d/i.test(s)) return s;
+  if (/(^|[-\s])\d[a-hA-H]{1,2}$/.test(s)) return s;
+  const th = threadInfo(s, 0);
+  return `${th.label}-${internal ? '6H' : '6g'}`;
+}
+
 /* ───────────────────────── Turned parts ───────────────────────── */
 
 // Hole callouts are stacked in rows above the part, one row per label.
-function labelRows(t) {
-  return new Set(t.crossHoles.map((h) => `${h.diameter}|${h.thread}`)).size + t.bores.length;
+function labelRows(t, L) {
+  return new Set(t.crossHoles.map(crossHoleGroup)).size + t.bores.reduce((a, b, i) => a + leaderLines(boreCallout(b, i, L)), 0);
+}
+
+// "M8-6H x 12 DEEP / DRILL Ø6.8 x 20 DEEP", "Ø10 THRU"…
+function boreCallout(b, i, L) {
+  const k = (f) => `turned.bores.${i}.${f}`;
+  const blind = b.depth > 0 && b.depth < L;
+  const depth = blind ? ` x ${fmt(b.depth)} DEEP` : ' THRU';
+  if (!b.thread) return K([k('diameter'), k('depth')], `Ø${fmt(b.diameter)}${depth}`);
+  const th = threadInfo(b.thread, b.diameter);
+  const name = threadCallout(b.thread, true);
+  const full = blind ? b.depth : L;
+  if (b.threadDepth > 0 && b.threadDepth < full - 1e-6) {
+    return K([[k('diameter'), k('threadDepth')], [k('depth')]], `${name} x ${fmt(b.threadDepth)} DEEP\n${blind ? 'DRILL ' : ''}Ø${fmt(Math.round(th.minor * 10) / 10)}${depth}`);
+  }
+  return K([k('diameter'), k('depth')], `${name}${depth}`);
 }
 
 function turnedEnvelope(p, s) {
@@ -129,7 +187,7 @@ function turnedEnvelope(p, s) {
   const L = overallLength(p);
   const R = Math.max(...t.segments.map((x) => x.diameter)) / 2;
   const threadDims = t.segments.some((g) => g.thread && g.threadLength > 0 && g.threadLength < g.length);
-  const labels = labelRows(t);
+  const labels = labelRows(t, L);
   const above = Math.max(12 + (threadDims ? 7 : 0), 5 + labels * 5 + 7) + 12; // hole labels, overall dim
   const below = 12 + t.crossHoles.length * 7 + 4;
   const gap = 22;
@@ -195,14 +253,14 @@ function drawTurned(S, p, s, ox, oy) {
       for (const sign of [1, -1]) S.line(X(a), Y(sign * th.minor / 2), X(b), Y(sign * th.minor / 2), 'thin');
       const inner = fromRight ? a : b;
       if (inner > x + 0.01 && inner < x + g.length - 0.01) S.line(X(inner), Y(g.diameter / 2), X(inner), Y(-g.diameter / 2), 'thin');
-      if (tl < g.length - 0.01) threadLenDims.push({ a, b, r: g.diameter / 2 });
+      if (tl < g.length - 0.01) threadLenDims.push({ a, b, r: g.diameter / 2, i });
     }
     x += g.length;
   });
 
   // Bores (hidden)
   const boreLabels = [];
-  t.bores.forEach((b) => {
+  t.bores.forEach((b, bi) => {
     const depth = b.depth > 0 ? Math.min(b.depth, L) : L;
     const th = b.thread ? threadInfo(b.thread, b.diameter) : null;
     const rDrill = (th ? th.minor : b.diameter) / 2;
@@ -212,7 +270,7 @@ function drawTurned(S, p, s, ox, oy) {
     for (const sign of [1, -1]) {
       S.line(X(x0), Y(sign * rDrill), X(x1), Y(sign * rDrill), 'hidden');
       if (th) {
-        const tl = depth;
+        const tl = b.threadDepth > 0 ? Math.min(b.threadDepth, depth) : depth;
         S.line(X(x0), Y(sign * th.major / 2), X(x0 + dir * tl), Y(sign * th.major / 2), 'hidden');
       }
     }
@@ -223,9 +281,7 @@ function drawTurned(S, p, s, ox, oy) {
       S.line(X(x1), Y(-rDrill), X(x1 + dir * tip), oy, 'hidden');
       S.line(X(x1), Y(rDrill), X(x1), Y(-rDrill), 'hidden');
     }
-    const name = th ? th.label : `Ø${fmt(b.diameter)}`;
-    const depthTxt = b.depth > 0 && b.depth < L ? ` x ${fmt(b.depth)} DEEP` : ' THRU';
-    boreLabels.push({ x: X(x0 + dir * Math.min(depth, 3 / s)), y: Y(rDrill), label: name + depthTxt, right: b.end === 'left' });
+    boreLabels.push({ x: X(x0 + dir * Math.min(depth, 3 / s)), y: Y(rDrill), label: boreCallout(b, bi, L), right: b.end === 'left' });
   });
 
   // Cross holes (axis perpendicular to the view)
@@ -239,54 +295,59 @@ function drawTurned(S, p, s, ox, oy) {
   const yTop = Y(R);
   const yBot = Y(-R);
   // Thread lengths (just above the part)
-  threadLenDims.forEach((d) => hDim(S, X(d.a), Y(d.r), X(d.b), Y(d.r), yTop - 7, `THREAD ${fmt(d.b - d.a)}`));
+  threadLenDims.forEach((d) => hDim(S, X(d.a), Y(d.r), X(d.b), Y(d.r), yTop - 7, K(`turned.segments.${d.i}.threadLength`, `THREAD ${fmt(d.b - d.a)}`)));
   // keep the overall length dimension above the hole callouts
-  const overallY = Math.min(yTop - 10 - (threadLenDims.length ? 7 : 0), yTop - 5 - labelRows(t) * 5 - 7);
-  hDim(S, X(0), Y(segs[0].diameter / 2), X(L), Y(rr), overallY, withTol(fmt(L), t.overallTol));
+  const overallY = Math.min(yTop - 10 - (threadLenDims.length ? 7 : 0), yTop - 5 - labelRows(t, L) * 5 - 7);
+  hDim(S, X(0), Y(segs[0].diameter / 2), X(L), Y(rr), overallY, K(segs.length === 1 ? 'turned.segments.0.length' : null, withTol(fmt(L), t.overallTol)));
   // Chain of step lengths below
   if (segs.length > 1) {
     x = 0;
-    segs.forEach((g) => {
-      hDim(S, X(x), Y(-g.diameter / 2), X(x + g.length), Y(-g.diameter / 2), yBot + 9, fmt(g.length));
+    segs.forEach((g, i) => {
+      hDim(S, X(x), Y(-g.diameter / 2), X(x + g.length), Y(-g.diameter / 2), yBot + 9, K(`turned.segments.${i}.length`, fmt(g.length)));
       x += g.length;
     });
   }
   // Diameters, inside each step (away from cross holes)
   x = 0;
-  segs.forEach((g) => {
+  segs.forEach((g, i) => {
     let xm = x + g.length * 0.5;
     const holes = t.crossHoles.filter((h) => Math.abs(h.x - xm) < h.diameter / 2 + 3 / s);
     if (holes.length) xm = Math.min(x + g.length - 2 / s, holes[0].x + holes[0].diameter / 2 + 5 / s);
-    const lbl = g.thread ? threadInfo(g.thread, g.diameter).label : withTol(`Ø${fmt(g.diameter)}`, g.diaTol);
-    innerVDim(S, X(xm), Y(g.diameter / 2), Y(-g.diameter / 2), lbl);
+    const lbl = g.thread ? threadCallout(g.thread, false) : withTol(`Ø${fmt(g.diameter)}`, g.diaTol);
+    innerVDim(S, X(xm), Y(g.diameter / 2), Y(-g.diameter / 2), K(`turned.segments.${i}.diameter`, lbl));
     x += g.length;
   });
   // Cross-hole positions from the left end, stacked below
   const baseY = yBot + (segs.length > 1 ? 16 : 9);
-  [...t.crossHoles].sort((a, b) => a.x - b.x).forEach((h, i) => {
-    hDim(S, X(0), Y(-segs[0].diameter / 2), X(h.x), oy, baseY + i * 7, fmt(h.x));
+  [...t.crossHoles.keys()].sort((a, b) => t.crossHoles[a].x - t.crossHoles[b].x).forEach((hi, i) => {
+    const h = t.crossHoles[hi];
+    hDim(S, X(0), Y(-segs[0].diameter / 2), X(h.x), oy, baseY + i * 7, K(`turned.crossHoles.${hi}.x`, fmt(h.x)));
   });
   // Cross-hole callouts
   const groups = new Map();
-  t.crossHoles.forEach((h) => {
-    const k = `${h.diameter}|${h.thread}`;
+  t.crossHoles.forEach((h, i) => {
+    const k = crossHoleGroup(h);
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(h);
+    groups.get(k).push(i);
   });
   let li = 0;
-  groups.forEach((hs) => {
-    const h = hs[0];
-    const name = h.thread ? threadInfo(h.thread, h.diameter).label : `Ø${fmt(h.diameter)}`;
-    const cnt = hs.length > 1 ? `${hs.length}x ` : '';
+  groups.forEach((idx) => {
+    const h = t.crossHoles[idx[0]];
+    const name = h.thread ? threadCallout(h.thread, true) : `Ø${fmt(h.diameter)}`;
+    const cnt = idx.length > 1 ? `${idx.length}x ` : '';
     const r = (h.thread ? threadInfo(h.thread, h.diameter).major : h.diameter) / 2 * s;
     const a = Math.PI / 4;
-    leader(S, X(h.x) + r * Math.cos(a), oy - r * Math.sin(a), `${cnt}${name} THRU`, 6, -(oy - yTop) - 4 - li * 5);
+    leader(S, X(h.x) + r * Math.cos(a), oy - r * Math.sin(a), K(idx.map((i) => `turned.crossHoles.${i}.diameter`), `${cnt}${name} THRU`), 6, -(oy - yTop) - 4 - li * 5);
     li++;
   });
-  boreLabels.forEach((b, i) => leader(S, b.x, b.y, b.label, b.right ? 8 : -8, -(b.y - yTop) - 5 - i * 5 - li * 5));
+  boreLabels.forEach((b) => {
+    li += leaderLines(b.label) - 1; // extra lines hang below the shoulder, into the rows reserved here
+    leader(S, b.x, b.y, b.label, b.right ? 8 : -8, -(b.y - yTop) - 5 - li * 5);
+    li += 1;
+  });
   // Chamfer callouts
-  if (cl > 0) leader(S, X(cl / 2), Y(segs[0].diameter / 2 - cl / 2), `${fmt(cl)}x45°`, -5, -6);
-  if (cr > 0) leader(S, X(L - cr / 2), Y(rr - cr / 2), `${fmt(cr)}x45°`, 5, -6);
+  if (cl > 0) leader(S, X(cl / 2), Y(segs[0].diameter / 2 - cl / 2), K('turned.chamferLeft', `${fmt(cl)}x45°`), -5, -6);
+  if (cr > 0) leader(S, X(L - cr / 2), Y(rr - cr / 2), K('turned.chamferRight', `${fmt(cr)}x45°`), 5, -6);
 
   // ── End view (looking at the right end) ──
   const ex = X(L) + turnedEnvelope(p, s).gap + R * s;
@@ -322,23 +383,71 @@ function drawTurned(S, p, s, ox, oy) {
 
 /* ───────────────────────── Plates / washers / blocks ───────────────────────── */
 
+function plateGroups(p) {
+  const groups = new Map();
+  p.plate.holes.forEach((h, i) => {
+    const k = plateHoleGroup(h);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(i);
+  });
+  return [...groups.values()];
+}
+
+// Hole callout for a group of identical plate holes, one line per operation:
+// "4x M8-6H x 12 DEEP" / "DRILL Ø6.8 x 16 DEEP" / "CBORE Ø14 x 8 DEEP" / "CSK Ø16 x 90°"
+function plateCallout(p, idx, withCount = true) {
+  const h = p.plate.holes[idx[0]];
+  const T = p.plate.thickness;
+  const k = (f) => idx.map((i) => `plate.holes.${i}.${f}`);
+  const cnt = withCount && idx.length > 1 ? `${idx.length}x ` : '';
+  const blind = h.depth > 0 && h.depth < T;
+  const depth = blind ? ` x ${fmt(h.depth)} DEEP` : ' THRU';
+  const lines = [], keys = [];
+  if (h.thread) {
+    const th = threadInfo(h.thread, h.diameter);
+    const name = threadCallout(h.thread, true);
+    const full = blind ? h.depth : T;
+    if (h.threadDepth > 0 && h.threadDepth < full - 1e-6) {
+      lines.push(`${cnt}${name} x ${fmt(h.threadDepth)} DEEP`); keys.push([...k('diameter'), ...k('threadDepth')]);
+      lines.push(`${blind ? 'DRILL ' : ''}Ø${fmt(Math.round(th.minor * 10) / 10)}${depth}`); keys.push(k('depth'));
+    } else {
+      lines.push(`${cnt}${name}${depth}`); keys.push([...k('diameter'), ...k('depth')]);
+    }
+  } else {
+    lines.push(`${cnt}${holeName(h)}${depth}`); keys.push([...k('diameter'), ...k('depth')]);
+  }
+  if (h.cboreDia > 0) { lines.push(`CBORE Ø${fmt(h.cboreDia)} x ${fmt(h.cboreDepth)} DEEP`); keys.push([...k('cboreDia'), ...k('cboreDepth')]); }
+  if (h.csinkDia > 0) { lines.push(`CSK Ø${fmt(h.csinkDia)} x ${fmt(h.csinkAngle)}°`); keys.push(k('csinkDia')); }
+  return K(keys, lines.join('\n'));
+}
+
+const TABLE_ROW = 4.4;
+function holeTableSize(p) {
+  if (!useHoleTable(p)) return null;
+  const legend = plateGroups(p).map((idx) => lab(plateCallout(p, idx)).text.split('\n'));
+  const lines = legend.flat();
+  const lw = Math.max(...lines.map((l) => textWidth(l, 2.6))) + 7;
+  return { w: Math.max(42, lw), h: (p.plate.holes.length + 1) * TABLE_ROW + 4 + lines.length * 3.8, legend };
+}
+
 function plateEnvelope(p, s) {
   const pl = p.plate;
-  const xs = new Set(pl.holes.map((h) => h.x)).size;
-  const ys = new Set(pl.holes.map((h) => h.y)).size;
-  const groups = new Set(pl.holes.map((h) => `${h.diameter}|${h.thread}|${h.depth}|${h.tol}`)).size;
+  const table = holeTableSize(p);
+  const xs = table ? 0 : new Set(pl.holes.map((h) => h.x)).size;
+  const ys = table ? 0 : new Set(pl.holes.map((h) => h.y)).size;
+  const callouts = table ? 0 : plateGroups(p).reduce((a, idx) => a + 6 + (leaderLines(plateCallout(p, idx)) - 1) * (DIM_H + 1.3), 0);
   const above = 6 + xs * 6 + 12;
   const left = 6 + ys * 6 + 6;
   const gap = 24;
   return {
-    w: left + pl.length * s + 14 + gap + pl.thickness * s + 14,
-    h: above + pl.width * s + 20 + groups * 6,
-    above, left, gap,
+    w: left + pl.length * s + 14 + gap + pl.thickness * s + 14 + (table ? 8 + table.w : 0),
+    h: Math.max(above + pl.width * s + 20 + callouts, table ? above + table.h : 0),
+    above, left, gap, table,
   };
 }
 
 function holeName(h) {
-  return h.thread ? threadInfo(h.thread, h.diameter).label : withTol(`Ø${fmt(h.diameter)}`, h.tol);
+  return h.thread ? threadCallout(h.thread, true) : withTol(`Ø${fmt(h.diameter)}`, h.tol);
 }
 
 function drawPlate(S, p, s, ox, oy) {
@@ -346,6 +455,8 @@ function drawPlate(S, p, s, ox, oy) {
   const L = pl.length, W = pl.width;
   const X = (x) => ox + x * s;
   const Y = (y) => oy + (W - y) * s;
+  const env = plateEnvelope(p, s);
+  const table = env.table;
 
   // Outline
   if (pl.shape === 'disc') {
@@ -363,9 +474,6 @@ function drawPlate(S, p, s, ox, oy) {
         S.line(X(0), Y(0) - rs, X(0), Y(W) + rs);
         S.line(X(L), Y(0) - rs, X(L), Y(W) + rs);
       }
-      if (L - 2 * r > 1e-6 || pl.shape !== 'obround') {
-        // nothing extra
-      }
       S.arc(X(L) - rs, Y(W) + rs, rs, 0, 90);
       S.arc(X(0) + rs, Y(W) + rs, rs, 90, 180);
       S.arc(X(0) + rs, Y(0) - rs, rs, 180, 270);
@@ -373,89 +481,133 @@ function drawPlate(S, p, s, ox, oy) {
     }
   }
 
-  // Holes
-  pl.holes.forEach((h) => {
+  // Holes (seen from the entry side: counterbores and countersinks are visible circles)
+  const tags = plateHoleTags(p);
+  pl.holes.forEach((h, i) => {
+    let outer;
     if (h.thread) {
       const th = threadInfo(h.thread, h.diameter);
       S.circle(X(h.x), Y(h.y), (th.minor / 2) * s, 'thick');
       S.arc(X(h.x), Y(h.y), (th.major / 2) * s, 0, 270, 'thin');
-      centerMark(S, X(h.x), Y(h.y), (th.major / 2) * s);
+      outer = th.major / 2;
     } else {
       S.circle(X(h.x), Y(h.y), (h.diameter / 2) * s, 'thick');
-      centerMark(S, X(h.x), Y(h.y), (h.diameter / 2) * s);
+      outer = h.diameter / 2;
     }
+    if (h.cboreDia > 0) { S.circle(X(h.x), Y(h.y), (h.cboreDia / 2) * s, 'thick'); outer = Math.max(outer, h.cboreDia / 2); }
+    if (h.csinkDia > 0) { S.circle(X(h.x), Y(h.y), (h.csinkDia / 2) * s, 'thick'); outer = Math.max(outer, h.csinkDia / 2); }
+    centerMark(S, X(h.x), Y(h.y), outer * s);
+    if (table) S.text(X(h.x) + outer * s * 0.75 + 0.6, Y(h.y) - outer * s * 0.75 - 0.6, tags[i], { h: 2.6, bold: true });
   });
 
   // Overall dimensions
   const label = pl.shape === 'disc' ? withTol(`Ø${fmt(L)}`, pl.lengthTol) : withTol(fmt(L), pl.lengthTol);
-  hDim(S, X(0), Y(pl.shape === 'disc' ? W / 2 : 0), X(L), Y(pl.shape === 'disc' ? W / 2 : 0), Y(0) + 10, label);
-  if (pl.shape !== 'disc') vDim(S, X(L), Y(0), X(L), Y(W), X(L) + 10, withTol(fmt(W), pl.widthTol));
+  hDim(S, X(0), Y(pl.shape === 'disc' ? W / 2 : 0), X(L), Y(pl.shape === 'disc' ? W / 2 : 0), Y(0) + 10, K('plate.length', label));
+  if (pl.shape !== 'disc') vDim(S, X(L), Y(0), X(L), Y(W), X(L) + 10, K('plate.width', withTol(fmt(W), pl.widthTol)));
   if (pl.shape !== 'rect' || pl.cornerRadius > 0) {
     const r = pl.shape === 'obround' ? Math.min(L, W) / 2 : pl.cornerRadius;
     if (pl.shape !== 'disc') {
       const a = Math.PI / 4;
       const cx = X(L) - r * s, cy = Y(W) + r * s;
-      leader(S, cx + r * s * Math.cos(a), cy - r * s * Math.sin(a), pl.shape === 'obround' ? `R${fmt(r)} FULL` : `R${fmt(r)}`, 6, -6);
+      leader(S, cx + r * s * Math.cos(a), cy - r * s * Math.sin(a), pl.shape === 'obround' ? `R${fmt(r)} FULL` : K('plate.cornerRadius', `R${fmt(r)}`), 6, -6);
     }
   }
 
   // Hole positions: baseline from the left edge (above) and from the bottom edge (left side)
   // (a hole concentric with a round washer needs no position dimensions)
-  const placed = pl.holes.filter((h) => !(pl.shape === 'disc' && Math.abs(h.x - L / 2) < 1e-6 && Math.abs(h.y - W / 2) < 1e-6));
-  const xs = [...new Set(placed.map((h) => h.x))].sort((a, b) => a - b);
-  const ys = [...new Set(placed.map((h) => h.y))].sort((a, b) => a - b);
-  xs.forEach((xv, i) => {
-    const h = placed.filter((q) => q.x === xv).sort((a, b) => b.y - a.y)[0];
-    hDim(S, X(0), Y(W), X(xv), Y(h.y), Y(W) - 8 - i * 6, fmt(xv));
-  });
-  ys.forEach((yv, i) => {
-    const h = placed.filter((q) => q.y === yv).sort((a, b) => a.x - b.x)[0];
-    vDim(S, X(0), Y(0), X(h.x), Y(yv), X(0) - 8 - i * 6, fmt(yv));
-  });
+  const placed = [...pl.holes.keys()].filter((i) => !(pl.shape === 'disc' && Math.abs(pl.holes[i].x - L / 2) < 1e-6 && Math.abs(pl.holes[i].y - W / 2) < 1e-6));
+  if (!table) {
+    const xs = [...new Set(placed.map((i) => pl.holes[i].x))].sort((a, b) => a - b);
+    const ys = [...new Set(placed.map((i) => pl.holes[i].y))].sort((a, b) => a - b);
+    xs.forEach((xv, i) => {
+      const idx = placed.filter((q) => pl.holes[q].x === xv);
+      const h = idx.map((q) => pl.holes[q]).sort((a, b) => b.y - a.y)[0];
+      hDim(S, X(0), Y(W), X(xv), Y(h.y), Y(W) - 8 - i * 6, K(idx.map((q) => `plate.holes.${q}.x`), fmt(xv)));
+    });
+    ys.forEach((yv, i) => {
+      const idx = placed.filter((q) => pl.holes[q].y === yv);
+      const h = idx.map((q) => pl.holes[q]).sort((a, b) => a.x - b.x)[0];
+      vDim(S, X(0), Y(0), X(h.x), Y(yv), X(0) - 8 - i * 6, K(idx.map((q) => `plate.holes.${q}.y`), fmt(yv)));
+    });
 
-  // Hole callouts, grouped
-  const groups = new Map();
-  pl.holes.forEach((h) => {
-    const k = `${h.diameter}|${h.thread}|${h.depth}|${h.tol}`;
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(h);
-  });
-  let gi = 0;
-  groups.forEach((hs) => {
-    const h = hs[0];
-    const cnt = hs.length > 1 ? `${hs.length}x ` : '';
-    const depth = h.depth > 0 && h.depth < pl.thickness ? ` x ${fmt(h.depth)} DEEP` : ' THRU';
-    const r = (h.thread ? threadInfo(h.thread, h.diameter).major : h.diameter) / 2 * s;
-    const a = -Math.PI / 4;
-    const px = X(h.x) + r * Math.cos(a), py = Y(h.y) - r * Math.sin(a);
-    // run the leader out below the part, under the overall length dimension
-    leader(S, px, py, `${cnt}${holeName(h)}${depth}`, 6, Y(0) + 17 + gi * 6 - py);
-    gi++;
-  });
+    // Hole callouts, grouped, run out below the part under the overall length dimension
+    let yy = Y(0) + 17;
+    plateGroups(p).forEach((idx) => {
+      const h = pl.holes[idx[0]];
+      const r = Math.max(h.thread ? threadInfo(h.thread, h.diameter).major : h.diameter, h.cboreDia, h.csinkDia) / 2 * s;
+      const a = -Math.PI / 4;
+      const px = X(h.x) + r * Math.cos(a), py = Y(h.y) - r * Math.sin(a);
+      const c = plateCallout(p, idx);
+      leader(S, px, py, c, 6, yy - py);
+      yy += 6 + (leaderLines(c) - 1) * (DIM_H + 1.3);
+    });
+  } else {
+    // origin mark for the table coordinates
+    S.text(X(0) - 1, Y(0) + 4, 'X0 Y0', { h: 2.4, anchor: 'end' });
+  }
 
-  // Side view (right), thickness horizontal
-  const env = plateEnvelope(p, s);
+  // Side view (right), thickness horizontal; holes enter from the left face
   const sx = X(L) + 14 + env.gap;
   const T = pl.thickness;
-  if (pl.shape === 'disc') {
-    S.rect(sx, Y(W), T * s, W * s, 'thick');
-  } else {
-    const r = pl.shape === 'obround' ? Math.min(L, W) / 2 : pl.cornerRadius;
-    S.rect(sx, Y(W), T * s, W * s, 'thick');
-    if (r > 0 && pl.shape === 'rect') {
-      S.line(sx, Y(W) + r * s, sx + T * s, Y(W) + r * s, 'thin');
-      S.line(sx, Y(0) - r * s, sx + T * s, Y(0) - r * s, 'thin');
-    }
+  S.rect(sx, Y(W), T * s, W * s, 'thick');
+  if (pl.shape === 'rect' && pl.cornerRadius > 0) {
+    const r = pl.cornerRadius;
+    S.line(sx, Y(W) + r * s, sx + T * s, Y(W) + r * s, 'thin');
+    S.line(sx, Y(0) - r * s, sx + T * s, Y(0) - r * s, 'thin');
   }
   pl.holes.forEach((h) => {
     const rr = (h.thread ? threadInfo(h.thread, h.diameter).minor : h.diameter) / 2;
     const depth = h.depth > 0 ? Math.min(h.depth, T) : T;
-    S.line(sx, Y(h.y + rr), sx + depth * s, Y(h.y + rr), 'hidden');
-    S.line(sx, Y(h.y - rr), sx + depth * s, Y(h.y - rr), 'hidden');
+    let z0 = 0;
+    if (h.cboreDia > 0) {
+      const cd = Math.min(h.cboreDepth, depth);
+      for (const sg of [1, -1]) S.line(sx, Y(h.y + sg * h.cboreDia / 2), sx + cd * s, Y(h.y + sg * h.cboreDia / 2), 'hidden');
+      S.line(sx + cd * s, Y(h.y + h.cboreDia / 2), sx + cd * s, Y(h.y - h.cboreDia / 2), 'hidden');
+      z0 = cd;
+    }
+    if (h.csinkDia > 0) {
+      const cz = Math.min(((h.csinkDia - 2 * rr) / 2) / Math.tan((h.csinkAngle / 2) * Math.PI / 180), depth);
+      for (const sg of [1, -1]) S.line(sx, Y(h.y + sg * h.csinkDia / 2), sx + cz * s, Y(h.y + sg * rr), 'hidden');
+      z0 = Math.max(z0, cz);
+    }
+    S.line(sx + z0 * s, Y(h.y + rr), sx + depth * s, Y(h.y + rr), 'hidden');
+    S.line(sx + z0 * s, Y(h.y - rr), sx + depth * s, Y(h.y - rr), 'hidden');
     S.line(sx - 2, Y(h.y), sx + T * s + 2, Y(h.y), 'center');
   });
-  hDim(S, sx, Y(0), sx + T * s, Y(0), Y(0) + 10, withTol(fmt(T), pl.thicknessTol));
+  hDim(S, sx, Y(0), sx + T * s, Y(0), Y(0) + 10, K('plate.thickness', withTol(fmt(T), pl.thicknessTol)));
   S.text(sx + (T * s) / 2, Y(0) + 18, 'SIDE VIEW', { h: 3, anchor: 'middle' });
+
+  // Hole table: tag / X / Y for every hole, and one callout per hole letter
+  if (table) {
+    const tx = sx + T * s + 14 + 8, ty = Math.min(Y(W), oy);
+    const cols = [12, 14, 14];
+    const cw = cols.reduce((a, b) => a + b, 0);
+    const rows = pl.holes.length + 1;
+    S.rect(tx, ty, cw, rows * TABLE_ROW, 'thin');
+    for (let r = 1; r < rows; r++) S.line(tx, ty + r * TABLE_ROW, tx + cw, ty + r * TABLE_ROW, 'thin');
+    let cx = tx;
+    cols.slice(0, -1).forEach((w) => { cx += w; S.line(cx, ty, cx, ty + rows * TABLE_ROW, 'thin'); });
+    const cell = (c, r, t, opt = {}) => {
+      const x0 = tx + cols.slice(0, c).reduce((a, b) => a + b, 0);
+      S.text(x0 + cols[c] / 2, ty + r * TABLE_ROW + 3.2, t, { h: 2.6, anchor: 'middle', ...opt });
+    };
+    ['HOLE', 'X', 'Y'].forEach((t, c) => cell(c, 0, t, { bold: true }));
+    pl.holes.forEach((h, i) => {
+      cell(0, i + 1, tags[i], { bold: true });
+      cell(1, i + 1, fmt(h.x), { tag: `plate.holes.${i}.x` });
+      cell(2, i + 1, fmt(h.y), { tag: `plate.holes.${i}.y` });
+    });
+    let ly = ty + rows * TABLE_ROW + 5;
+    plateGroups(p).forEach((idx) => {
+      const c = lab(plateCallout(p, idx));
+      const letter = tags[idx[0]][0];
+      S.text(tx, ly, letter, { h: 2.6, bold: true });
+      c.text.split('\n').forEach((l, li) => {
+        S.text(tx + 5, ly, l, { h: 2.6, tag: c.key[li] });
+        ly += 3.8;
+      });
+    });
+  }
 }
 
 /* ───────────────────────── Springs ───────────────────────── */
@@ -488,9 +640,9 @@ function drawSpring(S, p, s, ox, oy) {
     S.line(X(Lf), Y(D / 2), X(Lf), Y(-D / 2), 'thick');
   }
   S.line(X(0) - 3, oy, X(Lf) + 3, oy, 'center');
-  hDim(S, X(0), Y(D / 2), X(Lf), Y(D / 2), Y(D / 2) - 9, `L0 = ${fmt(Lf)}`);
-  vDim(S, X(Lf), Y(D / 2), X(Lf), Y(-D / 2), X(Lf) + 10, `OD ${fmt(D)}`);
-  leader(S, X(d / 2 + pitch / 2), Y(-Rm) + (d / 2) * s, `WIRE Ø${fmt(d)}`, 8, 8);
+  hDim(S, X(0), Y(D / 2), X(Lf), Y(D / 2), Y(D / 2) - 9, K('spring.freeLength', `L0 = ${fmt(Lf)}`));
+  vDim(S, X(Lf), Y(D / 2), X(Lf), Y(-D / 2), X(Lf) + 10, K('spring.outerDiameter', `OD ${fmt(D)}`));
+  leader(S, X(d / 2 + pitch / 2), Y(-Rm) + (d / 2) * s, K('spring.wireDiameter', `WIRE Ø${fmt(d)}`), 8, 8);
 }
 
 /* ───────────────────────── Sheet: frame, title block, notes ───────────────────────── */
@@ -536,7 +688,9 @@ export function partNotes(p) {
     }
     if (t.crossHoles.length) n.push('CROSS HOLE POSITIONS ARE TO HOLE CENTER, FROM LEFT END.');
   }
-  if (p.kind === 'plate' && p.plate.holes.length) n.push('HOLE POSITIONS ARE TO HOLE CENTER, FROM LEFT AND BOTTOM EDGES.');
+  if (p.kind === 'plate' && p.plate.holes.length) {
+    n.push(useHoleTable(p) ? 'HOLE POSITIONS PER HOLE TABLE, TO HOLE CENTER, FROM X0 Y0 (LEFT / BOTTOM EDGES).' : 'HOLE POSITIONS ARE TO HOLE CENTER, FROM LEFT AND BOTTOM EDGES.');
+  }
   if (p.kind === 'spring') {
     const sp = p.spring;
     n.push(`COMPRESSION SPRING: WIRE Ø${fmt(sp.wireDiameter)} x OD ${fmt(sp.outerDiameter)} x L0 ${fmt(sp.freeLength)}.`);
@@ -620,8 +774,9 @@ function chooseScale(envFn, p, areaW, areaH) {
   return SCALES[SCALES.length - 1];
 }
 
+// opts.tags: draw numbered balloons (from dimensionList) next to the dimensions — for the chat preview.
 export function buildDrawing(p, opts = {}) {
-  const S = new Sheet();
+  const S = new Sheet(opts.tags ? dimensionTags(p) : null);
   const o = { drawnBy: opts.drawnBy || '', date: opts.date || new Date().toLocaleDateString('en-GB'), image: opts.image || null };
   // Frame
   S.rect(8, 8, SHEET_W - 16, SHEET_H - 16, 'thick');
@@ -659,6 +814,12 @@ export function buildDrawing(p, opts = {}) {
   notesBlock(S, p);
   titleBlock(S, p, scale, o);
   return { sheet: S, scale, views: primsBox(S.prims.slice(1, viewEnd)) };
+}
+
+export function dimensionTags(p) {
+  const tags = {};
+  dimensionList(p).forEach((d) => d.keys.forEach((k) => { tags[k] = d; }));
+  return tags;
 }
 
 // Bounding box (sheet mm) of a list of primitives.
